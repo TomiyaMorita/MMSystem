@@ -12,18 +12,18 @@ def nextOrder(ordermode):
     ojdata.update(nextOrderID=id,orderNum=num,completionLaneNum=lanenum)
     send=True
     match ordermode:
-        case "1":
-              mate=[{"pumpNum":8,"time":5000},{"pumpNum":41,"time":8000}]
-              ojdata.update(glassLaneNum=[1,2,3,4,5,6],useIce=True,drinks=mate)
-        case "2":
+        case "1":   #ハイボール1
+              mate=[{"pumpNum":6,"time":5000},{"pumpNum":41,"time":8000}]
+              ojdata.update(glassLaneNum=[10,11],useIce=True,drinks=mate)
+        case "2":   #レモンサワー
+              mate=[{"pumpNum":30,"time":10000},{"pumpNum":41,"time":8000}]
+              ojdata.update(glassLaneNum=[10,11],useIce=True,drinks=mate)
+        case "3":   #ビール
               mate=[{"pumpNum":43,"time":10000}]
-              ojdata.update(glassLaneNum=[10,11,12],useIce=False,drinks=mate)
-        case "3":
-              mate=[{"pumpNum":18,"time":5000},{"pumpNum":42,"time":8000}]
-              ojdata.update(glassLaneNum=[13,14,15],useIce=True,drinks=mate)
-        case "4":
-              mate=[{"pumpNum":1,"time":15000}]
-              ojdata.update(glassLaneNum=[7,8,9],useIce=False,drinks=mate)
+              ojdata.update(glassLaneNum=[4,5],useIce=False,drinks=mate)
+        # case "4":
+        #       mate=[{"pumpNum":1,"time":15000}]
+        #       ojdata.update(glassLaneNum=[7,8,9],useIce=False,drinks=mate)
         case _:
             send=False
     if send == True:
@@ -70,7 +70,7 @@ if __name__ == "__main__":
         m=input("モードを選択してください\n 1:オーダーモード 2:コントロールモード 3:終了\n")
         match m:
             case "1":
-                p=input("コマンドを選択してください\n1:ハイボール\n2:ビール\n3:焼酎水割り\n4:赤ワイン\n5オレンジジュース\n")               
+                p=input("コマンドを選択してください\n1:ハイボール\n2:レモンサワー\n3:ビール\n")               
                 loop=nextOrder(p)
 
             case "2":               
