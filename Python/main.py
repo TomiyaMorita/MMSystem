@@ -10,7 +10,7 @@ import queue
 import random
 from collections import deque
 
-operatingMode = 0   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
+operatingMode = 1   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
 # ミューテックスの作成
 lock = threading.Lock()
 # キューの作成（情報を送信するため）
@@ -45,20 +45,17 @@ class DrinkBotMotionHandler:
         wadr = [0]
         adr = [0] * 250
         machineStopFlag = True
-        # print("ex_bstate",cls.ex_bstate)
-        # print("ex_ustate",cls.ex_ustate)
-        # print("mode",mode)
-        # print(cls.in_ustate["glassSensing"])
+      
         if mode == 1:
-            if cls.in_bstate.get("machineReady", False) and not cls.in_ustate.get("machineReady", True):  #物理非常停止時
+            if not cls.in_ustate.get("machineReady", True):  #物理非常停止時
                 machineStopFlag = False
                 cls.ex_ustate.update(runMode="hardwareEmergency",machineEmergency=True)
             elif not cls.in_bstate.get("machineReady", True) and cls.in_ustate.get("machineReady", False):
-                cls.ex_ustate.update(machineEmergency = False)
-            if cls.ex_ustate.get("errorNum", 0) != 0 and cls.ex_bstate.get("errorNum", 0) != cls.ex_ustate.get("errorNum",0):    #エラー発生時
+                cls.ex_ustate.update(runMode="autoOperationStop",machineEmergency = False)
+            if cls.ex_ustate.get("errorNum", 0) != 0 :    #エラー発生時
                 machineStopFlag = False
                 cls.ex_ustate["runMode"]="errorEmergency"
-            if not cls.in_bstate.get("plcConnectError", True) and cls.in_ustate.get("plcConnectError", False):
+            if cls.in_ustate.get("plcConnectError", False):
                 cls.ex_ustate["runMode"]="PLCConnectError!"
                 machineStopFlag = False
         #ステータスの定期更新により実行されるモード
@@ -77,14 +74,14 @@ class DrinkBotMotionHandler:
                     cls.ex_ustate.update(runMode = "autoOperationStop")
             ###自動動作開始中###
             if cls.in_ustate.get("controleMode", "")=="autoModeStart":  
-                if not cls.in_bstate.get("glassManualRemovalCompleted", True) and cls.in_ustate.get("glassManualRemovalCompleted", False):   #搬送機から手動グラス取り出し時完了
+                if cls.in_ustate.get("glassManualRemovalCompleted", False):   #搬送機から手動グラス取り出し時完了
                     cls.ex_ustate.update(glassManualRemoving = False,runMode = "glassRemoveCompleted")
-            if not cls.in_bstate.get("restartError", True) and cls.in_ustate.get("restartError", False):
+            if cls.in_ustate.get("restartError", False):
                  cls.ex_ustate.update(runMode = "restartError",drinkRemovedError=True)
             ###注文受付可否###
-            if not cls.in_bstate.get("plcOrderReady", True) and cls.in_ustate.get("plcOrderReady", False):
+            if cls.in_ustate.get("plcOrderReady", False) and cls.ex_ustate.get("autoMode", False):
                 cls.ex_ustate.update(orderReady = True)
-            elif cls.in_bstate.get("plcOrderReady", False) and not cls.in_ustate.get("plcOrderReady", True):
+            elif not cls.in_ustate.get("plcOrderReady", True):
                 cls.ex_ustate.update(orderReady = False)
             
             
@@ -160,7 +157,7 @@ class DrinkBotMotionHandler:
 
         #モバイルオーダーシステムからのnextOrder.json更新指示で変更になる動作モード
         if machineStopFlag and cls.ex_ustate.get("autoMode", False) and mode == 3:
-            if cls.in_ustate.get("useIce", False) and cls.in_ustate.get("iceRequest", False):
+            if cls.in_ustate.get("useIce", False) and cls.in_ustate.get("iceRequest", False):   #氷を使用するドリンクで、氷補充がONの時
                 cls.icelimitcount += 1
                 if cls.icelimitcount > 100000:
                     cls.awaitingupdate.update(iceNone = True)
@@ -283,8 +280,8 @@ def resetState():
         "orderErrorNum":0  #規定外だった注文内容の注文番号
     }
 
-def convertPlcState(errocode,adr):
-    if errocode == 0:
+def convertPlcState(errorcode,adr):
+    if errorcode == 0:
         providedLanesSensor = [False] * 3
         glasslist = [False] * 15
         externalPLCdata = {
@@ -296,7 +293,8 @@ def convertPlcState(errocode,adr):
             "drinkReseted": adr[9] == 1,    #ドリンクリセット完了
             "iceRequest": adr[13] == 1, #氷補充要求
             "providedLanesFull": [adr[i + 14] == 1 for i in range(len(providedLanesSensor))],    #提供レーンの満杯状況
-            "plcConnectError":False
+            "plcConnectError":False,
+            "plcReceiveError":False
         }
         internalPLCdata = {
             "machineReady": adr[0] == 1,    #機械動作可否
@@ -308,9 +306,16 @@ def convertPlcState(errocode,adr):
             "glassElevatorSensor": adr[12] == 1,    #搬送機昇降部センサー値
             "glassSensing": [adr[i + 17] == 1 for i in range(len(glasslist))]   #各グラスラックのセンサー状況
         }
-    elif errocode == 408:
+    elif errorcode == 408:
         externalPLCdata = {
             "plcConnectError":True
+        }
+        internalPLCdata= {
+
+        }
+    else:
+        externalPLCdata = {
+            "plcReceiveError":True
         }
         internalPLCdata= {
 
@@ -340,9 +345,8 @@ def info_sender():
                         jdata = json.load(f)
                     stateid=jdata.get("stateID", 0)
                     stateid+=1 if stateid < 100000 else 0
-                    newjsondata.update(stateID=stateid)
-                    newjsondata={**DrinkBotMotionHandler.ex_ustate}
-                    # jdata.update(DrinkBotMotionHandler.ex_ustate)   
+                    newjsondata.update(stateID = stateid)
+                    newjsondata={**newjsondata,**DrinkBotMotionHandler.ex_ustate}
                     with open('state.json', 'w') as f:
                         json.dump(newjsondata, f, indent=2, ensure_ascii=False)
                     if senddata[0] == 2:    #機械に操作指示があるなら送信

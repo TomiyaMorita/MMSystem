@@ -1,5 +1,5 @@
 {
-  "stateID": 1,
+  "stateID": 32,
   "machineEmergency": false,
   "runMode": "autoOperation",
   "orderReay": false,
@@ -14,8 +14,8 @@
   "autoMode": true,
   "operating": true,
   "errorNum": 0,
-  "orderCompleteNum": 2464,
-  "drinkCompletionNum": 2464,
+  "orderCompleteNum": 2482,
+  "drinkCompletionNum": 2482,
   "drinkReseted": false,
   "iceRequest": false,
   "providedLanesFull": [

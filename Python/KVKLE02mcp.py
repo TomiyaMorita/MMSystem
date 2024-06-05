@@ -183,13 +183,16 @@ class MCProtcol3E:
         cmd[10:] = writedata
         # print(len(writedata))
         # print(writedata)
-
         senddata = self.mcpheader(cmd) + cmd
         s.sendto(senddata, self.addr)
-        rcv = s.recv(BUFSIZE)
+        try:
+            rcv = s.recv(BUFSIZE)
+            return rcv[9:]  
+        except:
+            errordata=[0x98,0x01]
+            return errordata
         # print(rcv)
 
-        return rcv[9:]
 
 
     # Random Read
@@ -239,8 +242,8 @@ class MCProtcol3E:
             data = res[9:]
             return data
         except:
-            errodata=[0x98,0x01]
-            return errodata
+            errordata=[0x98,0x01]
+            return errordata
         # if res[9] == 0 and res[10] == 0:    #正常終了コード
         #     data = res[9:]
         #     return data
