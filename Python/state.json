@@ -1,0 +1,14 @@
+{
+  "machineEmergency": false,
+  "runMode": "restartError",
+  "orderReay": false,
+  "glassManualRemoving": false,
+  "drinkRemovedError": false,
+  "glassNone": false,
+  "iceNone": false,
+  "plcConnectError": true,
+  "plcReceiveError": false,
+  "orderError": false,
+  "orderErrorNum": 0,
+  "orderReady": false
+}
