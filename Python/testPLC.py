@@ -1,18 +1,8 @@
 import struct
 import json
-            
-class test0:
-    testdict={}
-    testdict2={}
-    def test1(self,dict):
-        self.testdict=self.testdict2.copy()
-        self.testdict2.update(dict)
-        print("testdict",self.testdict)
-        print("testdict2",self.testdict2)
 def test(data):
     mode=data[0]
     res=[0]
-    print("data",data)
     with open("plcState.json",'r') as c:    #テスト用にjsonファイルにより疑似PLCレスポンス生成
         try:
             testjsonData = json.load(c)
@@ -21,16 +11,15 @@ def test(data):
             print("")
     match mode :            
         case 1:
-            print("read")
+            # print("read")
 
             res[0]=0
             rdata=res+testplcData
         
             return rdata
         case 2:
-            print("write")
+            # print("write")
             senddata=data[1:]
-            print(senddata)
             if senddata[1] == 1:
                 testplcData[4]=0
                 print("エラーリセット")
@@ -44,6 +33,7 @@ def test(data):
                 print("自動動作開始")
             if senddata[7] == 1:
                 testplcData[2]=0
+                testplcData[3]=0
                 print("自動動作停止")
             if senddata[7] == 2:
                 testplcData[3]=0
@@ -90,10 +80,5 @@ def test(data):
             
 
 if __name__ == '__main__':
-
-    dict1={"a":1,"b":2}
-    dict2={"a":3,"b":4}
-    s=test0()
-    s.test1(dict1)
-    s2=test0()
-    s2.test1(dict2)
+    data=[1]
+    test(data)

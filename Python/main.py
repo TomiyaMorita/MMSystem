@@ -10,7 +10,7 @@ import queue
 import random
 from collections import deque
 
-operatingMode = 0   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
+operatingMode = 1   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
 # ミューテックスの作成
 lock = threading.Lock()
 # キューの作成（情報を送信するため）
@@ -62,15 +62,6 @@ class DrinkBotMotionHandler:
             cls.ex_ustate.update(cls.awaitingupdate)   #更新待機中のステートをアップデート
             cls.awaitingupdate.clear()
              ###自動動作停止中###
-            # if cls.in_ustate.get("controleMode", "")=="autoModeStop":   
-            #     if cls.in_bstate.get("makingDrinks", False) and not cls.in_ustate.get("makingDrinks", True) and cls.ex_ustate.get("autoMode", False):    #搬送レーンにあるドリンクがなくなり次第自動動作停止
-            #         adr[7] = 1
-            #         wadr[0] = 2
-            #         cls.ex_ustate.update(runMode="sequenceStopStanby")
-            #     elif not cls.in_ustate.get("makingDrinks", True) and cls.ex_bstate.get("operating", False) and not cls.ex_ustate.get("operating", True):    #全動作終了後、自動動作シーケンス終了
-            #         adr[7] = 2
-            #         wadr[0] = 2
-            #         cls.ex_ustate.update(runMode = "autoOperationStop")
             if cls.in_bstate.get("makingDrinks", False) and not cls.in_ustate.get("makingDrinks", True) and cls.ex_ustate.get("autoMode", False):    #搬送レーンにあるドリンクがなくなり次第自動動作停止
                 adr[7] = 1
                 wadr[0] = 2
@@ -79,12 +70,7 @@ class DrinkBotMotionHandler:
                 adr[7] = 2
                 wadr[0] = 2
                 cls.ex_ustate.update(runMode = "autoOperationStop")
-            ###自動動作開始中###
-            # if cls.in_ustate.get("controleMode", "")=="autoModeStart":  
-            #     if cls.in_ustate.get("glassManualRemovalCompleted", False):   #搬送機から手動グラス取り出し時完了
-            #         cls.ex_ustate.update(glassManualRemoving = False,runMode = "waitingGlassRemoved")
-            #     if not cls.in_ustate.get("conveyourDrinkSensor", True) and not cls.ex_ustate.get("autoMode", True) and not cls.ex_ustate.get("glassManualRemoving",False) and not cls.in_ustate.get("glassManualRemovalCompleted", True):
-            #         cls.ex_ustate.update(drinkRemovedError=False,runMode = "autoOperationStop")
+            ###自動動作開始中###  
             if not cls.ex_ustate.get("autoMode", True):
                 if cls.in_ustate.get("glassManualRemovalCompleted", False):   #搬送機から手動グラス取り出し時完了
                         cls.ex_ustate.update(glassManualRemoving = False,runMode = "waitingGlassRemoved")
@@ -183,12 +169,9 @@ class DrinkBotMotionHandler:
             glasslist = cls.in_ustate.get("glassLaneNum", [])
             random.shuffle(glasslist)   #グラスグループをランダムにシャッフル
             glasslanecount = 0
-            # print("in_ustate",cls.in_ustate["glassSensing"])
-            print("glassSensing",cls.in_ustate.get("glassSensing", []))
-            print("glasslist",glasslist)
+
             for i in range(len(glasslist)):
                 if cls.in_ustate.get("glassSensing", [])[glasslist[i]-1]:  #候補のグラスレーンにグラスが存在するかの確認
-                    print(glasslist[i])
                     useglass = glasslist[i]   #使用するグラスの決定
                 else:
                     glasslanecount += 1
@@ -206,16 +189,12 @@ class DrinkBotMotionHandler:
                 adr[11] = useglass
                 adr[12] = 0 if cls.in_ustate.get("useIce", False) else 1  #useIceがtrueなら氷入れる,0=氷あり
                 drinks = cls.in_ustate.get('drinks', [])
-                # print("drinks1",drinks[0]['pumpNum'])
                 for i in range(len(drinks)): #使用する材料の数だけループ
                     firstArynum = 15
                     drinknum = firstArynum + 5 * (drinks[i]['pumpNum'] - 1)
-                    # print("drinknum",drinknum)
                     adr[drinknum] = 1
                     adr[drinknum + 1] = drinks[i]['time']
-            # print("注文内容",adr)
-        print(cls.ex_ustate["runMode"])
-        # print(cls.in_ustate)
+        # print(cls.ex_ustate["runMode"])
         wadr += adr
         return wadr
 
@@ -231,7 +210,6 @@ def jsonData(path):
     elif path == "nextOrder.json":
         with open(path, 'r') as f:
             data = json.load(f)
-            print("nextOrderID",data["nextOrderID"])
             if data["nextOrderID"] != nextorderid:
                 nextorderid = data["nextOrderID"]
                 return data, 3
@@ -249,7 +227,6 @@ class MyFileWatchHandler(PatternMatchingEventHandler):
                 if rdata is not None:
                     DrinkBotMotionHandler.update_instate(rdata)    #ステータス情報更新
                     senddata = DrinkBotMotionHandler.motion_data(mode)
-                    # print("senddata",senddata)
                     info_queue.put(senddata)
 
     def checkjsonfile(self, path):
@@ -359,7 +336,8 @@ def info_sender():
                 DrinkBotMotionHandler.checkUpdateState(edata)   #state.jsonに書き込む必要のあるステータスのみの更新確認
                 senddata = DrinkBotMotionHandler.motion_data(info[0])   #ステータスの更新により動作を行うアドレスを取得
                 if DrinkBotMotionHandler.ex_bstate != DrinkBotMotionHandler.ex_ustate:
-                    print("stateChange!!")
+                    # print("stateChange!!")
+                    print("runMode",DrinkBotMotionHandler.ex_ustate["runMode"])
                     with open("state.json", 'r') as f:
                         jdata = json.load(f)
                     stateid=jdata.get("stateID", 0)
