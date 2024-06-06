@@ -4,7 +4,7 @@
 ### main.py
 メインで動かすプログラムです。このプログラムは常に実行されます。
 ### demoOrder.py
-テスト用にcontrole.json,nextOrder.jsonファイルを書き換える・state.jsonファイルを読み込みステータスの状態を整理ために使用できます。
+テスト用にcontrole.json,nextOrder.jsonファイルを書き換える・state.jsonファイルを読み込みステータスの状態を整理するのに使用できます。
 ### KVELE02mcp.py
 PLCにデータを送信する際にmain.pyから呼び出され、変換を行います。
 ### testPLC.py
