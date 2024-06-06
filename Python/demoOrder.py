@@ -1,5 +1,32 @@
 import json
-
+def stateCheck():
+    with open("state.json", 'r') as s:
+        stdata = json.load(s)
+    if stdata["machineEmergency"]:
+        print("非常停止中")
+    else:
+        if stdata["autoMode"] and stdata["orderReady"] and stdata["orderErrorNum"] ==0:
+            print("自動動作中、注文受付可能")
+            print("注文受け付け番号:",stdata["orderCompleteNum"])
+            print("排出完了番号:",stdata["drinkCompletionNum"])
+        elif stdata["autoMode"] and not stdata["orderReady"] and stdata["orderErrorNum"] ==0:
+            print("自動動作中、注文受付不可")
+            print("注文受け付け番号:",stdata["orderCompleteNum"])
+            print("排出完了番号:",stdata["drinkCompletionNum"])
+        elif stdata["autoMode"] and stdata["orderErrorNum"] !=0:
+            print("エラー発生、エラー番号：",stdata["orderErrorNum"])
+        elif not stdata["autoMode"] and stdata["operating"]:
+            print("自動動作停止中、駆動部動作中")
+        elif not stdata["autoMode"] and not stdata["operating"]:
+            print("自動動作停止中、駆動部停止中")
+        if stdata["autoMode"] and stdata["glassNone"]:
+            print("グラス無し、再注文要請")
+        if stdata["glassManualRemoving"]:
+            print("グラス手動取り出し中")
+        if stdata["drinkRemovedError"]:
+            print("自動動作再開時ドリンク取り出しエラー")
+        if stdata["drinkReseted"]:
+            print("ドリンクリセット完了")
 def nextOrder(ordermode):
     with open("nextOrder.json", 'r') as c:
         ojdata = json.load(c)
@@ -47,14 +74,12 @@ def controle(ctrmode):
         case "3":
             cjdata.update(controleMode="autoModeStop")
         case "4":
-            cjdata.update(controleMode="drinkRemoved")
+            cjdata.update(controleMode="drinkRemoved")    
         case "5":
-            cjdata.update(controleMode="glassRemovalCompleted")     
-        case "6":
             cjdata.update(controleMode="manualPumpON",manualPumpNum=8)
-        case "7":
+        case "6":
             cjdata.update(controleMode="manualPumpOFF")
-        case "8":
+        case "7":
             cjdata.update(controleMode="errorReset")
         case _:
             send=False
@@ -67,6 +92,8 @@ if __name__ == "__main__":
     loop=True
     while(loop):
         dict={}
+        input("Enterキーを押してステータスを取得してください")
+        stateCheck()
         m=input("モードを選択してください\n 1:オーダーモード 2:コントロールモード 3:終了\n")
         match m:
             case "1":
@@ -74,7 +101,7 @@ if __name__ == "__main__":
                 loop=nextOrder(p)
 
             case "2":               
-                p=input("コマンドを選択してください\n1:非常停止\n2:自動動作開始\n3:自動動作停止\n4:エラー時ドリンク取り除き完了\n5:グラス除去完了\n6:指定ポンプON\n7:指定ポンプOFF\n8:エラーリセット\n")
+                p=input("コマンドを選択してください\n1:非常停止\n2:自動動作開始\n3:自動動作停止\n4:エラー時ドリンク取り除き完了\n5:指定ポンプON\n6:指定ポンプOFF\n7:エラーリセット\n")
                 loop=controle(p)
             case "3":
                 print("終了")
