@@ -1,0 +1,13 @@
+<diffgr:diffgram xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:diffgr="urn:schemas-microsoft-com:xml-diffgram-v1">
+  <DSWORKSPACE>
+    <D_Workspace diffgr:id="D_Workspace1" msdata:rowOrder="0" diffgr:hasChanges="inserted">
+      <iID>1</iID>
+      <szName>DBPLC_test</szName>
+      <dtCreateDate>2024-06-06T10:00:52.4905359+09:00</dtCreateDate>
+    </D_Workspace>
+    <D_DBVersion diffgr:id="D_DBVersion2" msdata:rowOrder="0" diffgr:hasChanges="inserted">
+      <iSupportVersion>1</iSupportVersion>
+      <iCreateVersion>1</iCreateVersion>
+    </D_DBVersion>
+  </DSWORKSPACE>
+</diffgr:diffgram>

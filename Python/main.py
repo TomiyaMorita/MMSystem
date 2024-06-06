@@ -10,7 +10,7 @@ import queue
 import random
 from collections import deque
 
-operatingMode = 1   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
+operatingMode = 0   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
 # ミューテックスの作成
 lock = threading.Lock()
 # キューの作成（情報を送信するため）
@@ -27,7 +27,6 @@ class DrinkBotMotionHandler:
     ex_ustate = {}
     awaitingupdate = {}
     icelimitcount = 0
-
     @classmethod
     def update_instate(cls, in_state):
         #更新前のステータスbeforedictに保存
@@ -75,21 +74,27 @@ class DrinkBotMotionHandler:
             ###自動動作開始中###
             if cls.in_ustate.get("controleMode", "")=="autoModeStart":  
                 if cls.in_ustate.get("glassManualRemovalCompleted", False):   #搬送機から手動グラス取り出し時完了
-                    cls.ex_ustate.update(glassManualRemoving = False,runMode = "glassRemoveCompleted")
+                    cls.ex_ustate.update(glassManualRemoving = False,runMode = "waitingGlassRemoved")
+                if not cls.in_ustate.get("conveyourDrinkSensor", True) and not cls.ex_ustate.get("autoMode", True) and not cls.ex_ustate.get("glassManualRemoving",False) and not cls.in_ustate.get("glassManualRemovalCompleted", True):
+                    cls.ex_ustate.update(drinkRemovedError=False,runMode = "autoOperationStop")
             if cls.in_ustate.get("restartError", False):
                  cls.ex_ustate.update(runMode = "restartError",drinkRemovedError=True)
             ###注文受付可否###
             if cls.in_ustate.get("plcOrderReady", False) and cls.ex_ustate.get("autoMode", False):
                 cls.ex_ustate.update(orderReady = True)
             elif not cls.in_ustate.get("plcOrderReady", True):
-                cls.ex_ustate.update(orderReady = False)
-            
+                cls.ex_ustate.update(orderReady = False)  
+            ###ドリンクリセット時###
+            if not cls.ex_bstate.get("drinkReseted", True) and cls.ex_ustate.get("drinkReseted", False):
+                 cls.ex_ustate.update(runMode = "PLCdrinkReseted")         
             
             ###中間管理システム開始時動作判定###
             if cls.ex_ustate.get("autoMode", False) and cls.ex_ustate["runMode"]=='':
                 cls.ex_ustate.update(runMode = "autoOperation")
             elif not cls.ex_ustate.get("autoMode", True) and cls.ex_ustate["runMode"]=='':
                 cls.ex_ustate.update(runMode = "autoOperationStop")
+            ###非常停止ボタン解除時動作判定###
+            
             ###常時###
             if cls.ex_bstate.get("iceRequest", False) and not cls.ex_ustate.get("iceRequest", True):  #氷減少センサーがオンからオフになったとき、氷管理カウンターを0に戻す
                 cls.icelimitcount = 0
@@ -108,7 +113,7 @@ class DrinkBotMotionHandler:
                 wadr[0] = 2
                 cls.awaitingupdate.update(runMode="stanbyErrorReaet")
             ###自動動作開始指示時###
-            if cls.in_ustate.get("controleMode", "")=="autoModeStart" or cls.in_ustate.get("controleMode", "")=="glassRemovalCompleted" and not cls.ex_ustate.get("operating", True):
+            if cls.in_ustate.get("controleMode", "")=="autoModeStart" and not cls.ex_ustate.get("operating", True):
                 if not cls.in_ustate.get("glassElevatorSensor", True) and not cls.in_ustate.get("conveyourDrinkSensor", True):  #昇降機と搬送機のセンサーがどちらもオフなら、自動運転開始
                     adr[6] = 1
                     wadr[0] = 2
@@ -132,28 +137,29 @@ class DrinkBotMotionHandler:
             ###ドリンク取り除き完了指示時###
             if cls.in_ustate.get("controleMode", "")=="drinkRemoved" :
                 if not cls.ex_ustate.get("operating", True) and not cls.in_ustate.get("conveyourDrinkSensor", True):   #ドリンクリセット指示がされた
-                    adr[3] = 1
+                    adr[7] = 2  #自動動作シーケンス終了
+                    adr[3] = 1  #ドリンク取り除き完了
                     wadr[0] = 2    
                     cls.awaitingupdate.update(runMode = "PLCdrinkResetStanby",drinkRemovedError = False)
                 elif cls.in_ustate.get("conveyourDrinkSensor", False):
                     cls.awaitingupdate.update(drinkRemovedError = True , runMode="onConveyorError")
-            if cls.ex_ustate["runMode"] != "softwareEmergency":
-                ###ポンプON指示時###
-                if cls.in_ustate.get("controleMode", "")=="manualPumpON" :
-                    if not cls.ex_ustate.get("autoMode", True) :   #ポンプ手動運転ON
-                        adr[8] = 1
-                        pumpnum = cls.in_ustate.get("manualPumpNum", 0) * 10 + 20
-                        adr[pumpnum] = 1
-                        wadr[0] = 2
-                        cls.awaitingupdate.update(runMode = "manualPumpON")
-                
-                ###ポンプOFF指示時###
-                if cls.in_ustate.get("controleMode", "")=="manualPumpOFF" :
-                    if not cls.ex_ustate.get("autoMode", True) :  #ポンプ手動運転OFF
-                        adr[8] = 0
-                        wadr[0] = 2
-                        cls.awaitingupdate.update(runMode = "manualPumpOFF")
-                        # cls.awaitingupdate["runMode"] = "maintenance"
+            
+            ###ポンプON指示時###
+            if cls.in_ustate.get("controleMode", "")=="manualPumpON" :
+                if not cls.ex_ustate.get("autoMode", True) :   #ポンプ手動運転ON
+                    adr[8] = 1
+                    pumpnum = (cls.in_ustate.get("manualPumpNum", 0)-1) * 5 + 15
+                    adr[pumpnum] = 1
+                    wadr[0] = 2
+                    cls.awaitingupdate.update(runMode = "manualPumpON")
+            
+            ###ポンプOFF指示時###
+            if cls.in_ustate.get("controleMode", "")=="manualPumpOFF" :
+                if not cls.ex_ustate.get("autoMode", True) :  #ポンプ手動運転OFF
+                    adr[8] = 0
+                    wadr[0] = 2
+                    cls.awaitingupdate.update(runMode = "manualPumpOFF")
+                    # cls.awaitingupdate["runMode"] = "maintenance"
 
         #モバイルオーダーシステムからのnextOrder.json更新指示で変更になる動作モード
         if machineStopFlag and cls.ex_ustate.get("autoMode", False) and mode == 3:
@@ -269,7 +275,7 @@ def resetState():
     return {
         "machineEmergency":False, #非常停止ボタン押下
         "runMode":"",  #現在実行中のモード
-        "orderReay":False,
+        "orderReady":False,
         "glassManualRemoving":False,    #手動グラス取り出し中true
         "drinkRemovedError":False,  #自動動作開始指示後、グラスが搬送機上から取り除かれていない
         "glassNone":False,  #使用するグラスがグラスラックにない
