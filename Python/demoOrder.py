@@ -5,11 +5,11 @@ def stateCheck():
     if stdata["machineEmergency"]:
         print("非常停止中")
     else:
-        if stdata["autoMode"] and stdata["orderReady"] and stdata["orderErrorNum"] ==0:
+        if stdata["autoMode"] and stdata["orderReady"] and stdata["orderErrorNum"] ==0 and not stdata["glassNone"]:
             print("自動動作中、注文受付可能")
             print("注文受け付け番号:",stdata["orderCompleteNum"])
             print("排出完了番号:",stdata["drinkCompletionNum"])
-        elif stdata["autoMode"] and not stdata["orderReady"] and stdata["orderErrorNum"] ==0:
+        elif stdata["autoMode"] and not stdata["orderReady"] and stdata["orderErrorNum"] ==0 and not stdata["glassNone"]:
             print("自動動作中、注文受付不可")
             print("注文受け付け番号:",stdata["orderCompleteNum"])
             print("排出完了番号:",stdata["drinkCompletionNum"])
@@ -19,7 +19,7 @@ def stateCheck():
             print("自動動作停止中、駆動部動作中")
         elif not stdata["autoMode"] and not stdata["operating"]:
             print("自動動作停止中、駆動部停止中")
-        if stdata["autoMode"] and stdata["glassNone"]:
+        if stdata["glassNone"]:
             print("グラス無し、再注文要請")
         if stdata["glassManualRemoving"]:
             print("グラス手動取り出し中")

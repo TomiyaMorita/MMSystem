@@ -62,21 +62,34 @@ class DrinkBotMotionHandler:
             cls.ex_ustate.update(cls.awaitingupdate)   #更新待機中のステートをアップデート
             cls.awaitingupdate.clear()
              ###自動動作停止中###
-            if cls.in_ustate.get("controleMode", "")=="autoModeStop":   
-                if cls.in_bstate.get("makingDrinks", False) and not cls.in_ustate.get("makingDrinks", True) and cls.ex_ustate.get("autoMode", False):    #搬送レーンにあるドリンクがなくなり次第自動動作停止
-                    adr[7] = 1
-                    wadr[0] = 2
-                    cls.ex_ustate.update(runMode="sequenceStopStanby")
-                elif not cls.in_ustate.get("makingDrinks", True) and cls.ex_bstate.get("operating", False) and not cls.ex_ustate.get("operating", True):    #全動作終了後、自動動作シーケンス終了
-                    adr[7] = 2
-                    wadr[0] = 2
-                    cls.ex_ustate.update(runMode = "autoOperationStop")
+            # if cls.in_ustate.get("controleMode", "")=="autoModeStop":   
+            #     if cls.in_bstate.get("makingDrinks", False) and not cls.in_ustate.get("makingDrinks", True) and cls.ex_ustate.get("autoMode", False):    #搬送レーンにあるドリンクがなくなり次第自動動作停止
+            #         adr[7] = 1
+            #         wadr[0] = 2
+            #         cls.ex_ustate.update(runMode="sequenceStopStanby")
+            #     elif not cls.in_ustate.get("makingDrinks", True) and cls.ex_bstate.get("operating", False) and not cls.ex_ustate.get("operating", True):    #全動作終了後、自動動作シーケンス終了
+            #         adr[7] = 2
+            #         wadr[0] = 2
+            #         cls.ex_ustate.update(runMode = "autoOperationStop")
+            if cls.in_bstate.get("makingDrinks", False) and not cls.in_ustate.get("makingDrinks", True) and cls.ex_ustate.get("autoMode", False):    #搬送レーンにあるドリンクがなくなり次第自動動作停止
+                adr[7] = 1
+                wadr[0] = 2
+                cls.ex_ustate.update(runMode="sequenceStopStanby")
+            elif not cls.in_ustate.get("makingDrinks", True) and cls.ex_bstate.get("operating", False) and not cls.ex_ustate.get("operating", True):    #全動作終了後、自動動作シーケンス終了
+                adr[7] = 2
+                wadr[0] = 2
+                cls.ex_ustate.update(runMode = "autoOperationStop")
             ###自動動作開始中###
-            if cls.in_ustate.get("controleMode", "")=="autoModeStart":  
+            # if cls.in_ustate.get("controleMode", "")=="autoModeStart":  
+            #     if cls.in_ustate.get("glassManualRemovalCompleted", False):   #搬送機から手動グラス取り出し時完了
+            #         cls.ex_ustate.update(glassManualRemoving = False,runMode = "waitingGlassRemoved")
+            #     if not cls.in_ustate.get("conveyourDrinkSensor", True) and not cls.ex_ustate.get("autoMode", True) and not cls.ex_ustate.get("glassManualRemoving",False) and not cls.in_ustate.get("glassManualRemovalCompleted", True):
+            #         cls.ex_ustate.update(drinkRemovedError=False,runMode = "autoOperationStop")
+            if not cls.ex_ustate.get("autoMode", True):
                 if cls.in_ustate.get("glassManualRemovalCompleted", False):   #搬送機から手動グラス取り出し時完了
-                    cls.ex_ustate.update(glassManualRemoving = False,runMode = "waitingGlassRemoved")
-                if not cls.in_ustate.get("conveyourDrinkSensor", True) and not cls.ex_ustate.get("autoMode", True) and not cls.ex_ustate.get("glassManualRemoving",False) and not cls.in_ustate.get("glassManualRemovalCompleted", True):
-                    cls.ex_ustate.update(drinkRemovedError=False,runMode = "autoOperationStop")
+                        cls.ex_ustate.update(glassManualRemoving = False,runMode = "waitingGlassRemoved")
+                if cls.in_bstate.get("conveyourDrinkSensor", False) and not cls.in_ustate.get("conveyourDrinkSensor", True)  and not cls.ex_ustate.get("glassManualRemoving",False) and not cls.in_ustate.get("glassManualRemovalCompleted", True):
+                        cls.ex_ustate.update(drinkRemovedError=False,runMode = "autoOperationStop")
             if cls.in_ustate.get("restartError", False):
                  cls.ex_ustate.update(runMode = "restartError",drinkRemovedError=True)
             ###注文受付可否###

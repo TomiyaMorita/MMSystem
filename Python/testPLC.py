@@ -43,10 +43,10 @@ def test(data):
                 testplcData[3]=1
                 print("自動動作開始")
             if senddata[7] == 1:
-                testplcData[3]=0
+                testplcData[2]=0
                 print("自動動作停止")
             if senddata[7] == 2:
-                testplcData[2]=0
+                testplcData[3]=0
                 print("自動動作終了")
             if senddata[8] == 1:
                 pumpary=senddata[15:]
