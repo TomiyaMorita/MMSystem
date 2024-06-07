@@ -121,7 +121,7 @@ class DrinkBotMotionHandler:
                 wadr[0] = 2
                 cls.awaitingupdate.update(runMode="softwareEmergency")
             ###エラーリセット指示時###
-            if cls.in_ustate.get("controleMode", "")=="errorReset":    
+            if cls.in_ustate.get("controleMode", "")=="errorReset"and cls.ex_ustate.get("errorNum", 0) != 0:    
                 adr[1] = 1
                 wadr[0] = 2
                 cls.awaitingupdate.update(runMode="stanbyErrorReaet")
@@ -138,6 +138,7 @@ class DrinkBotMotionHandler:
                     adr[4] = 1
                     wadr[0] = 2
                     cls.awaitingupdate.update(glassManualRemoving = True , runMode="stanbyRemoveGlass")
+            
             ###自動動作停止指示時###
             if cls.in_ustate.get("controleMode", "")=="autoModeStop" and cls.ex_ustate.get("operating", False):    
                 if cls.in_ustate.get("makingDrinks", False) :   #自動動作停止指示がされたがドリンク製作中なら、ドリンク製作終了スタンバイモードへ
@@ -146,7 +147,7 @@ class DrinkBotMotionHandler:
                     adr[7] = 1
                     wadr[0] = 2
                     cls.awaitingupdate.update(runMode = "sequenceStopStanby")
-
+            
             ###ドリンク取り除き完了指示時###
             if cls.in_ustate.get("controleMode", "")=="drinkRemoved" :
                 if not cls.ex_ustate.get("operating", True) and not cls.in_ustate.get("conveyourDrinkSensor", True):   #ドリンクリセット指示がされた
@@ -193,9 +194,9 @@ class DrinkBotMotionHandler:
                 else:
                     glasslanecount += 1
             if glasslanecount == len(glasslist):    #使用するグラスがない場合、glassNone=trueにしてstate.jsonに書き込んで報告
-                cls.awaitingupdate.update(glassNone = True)
+                cls.awaitingupdate.update(glassNone = True,runMode = "noDesignatedGlasses")
             else:
-                cls.awaitingupdate.update(glassNone = False)
+                cls.awaitingupdate.update(glassNone = False,runMode = "autoOperation")
 
             # if not cls.alldict.get("iceNone", True) and not cls.alldict.get("glassNone", True): #注文可能条件に合う場合、注文データ作成
             if not cls.awaitingupdate.get("glassNone", True): #注文可能条件に合う場合、注文データ作成

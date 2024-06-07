@@ -43,6 +43,7 @@ def nextOrder(ordermode):
               mate=[{"pumpNum":6,"time":5000},{"pumpNum":41,"time":8000}]
               ojdata.update(glassLaneNum=[10,11],useIce=True,drinks=mate)
         case "2":   #レモンサワー
+            
               mate=[{"pumpNum":30,"time":10000},{"pumpNum":41,"time":8000}]
               ojdata.update(glassLaneNum=[10,11],useIce=True,drinks=mate)
         case "3":   #ビール
