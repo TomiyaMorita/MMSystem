@@ -1,62 +1,78 @@
+import random
 import json
 import time
 from abc import ABCMeta, abstractmethod
-import os
 
 
-class FileObserver(metaclass=ABCMeta):
+class NumberGenerator(metaclass=ABCMeta):   #観察される側
+    def __init__(self):
+        self.__observers = []
+
+    def addObserver(self, observer):
+        self.__observers.append(observer)
+
+    def deleteObserver(self, observer):
+        self.__observers.remove(observer)
+
+    def notifyObserver(self):
+        for o in self.__observers:
+            o.update(self)
+
     @abstractmethod
-    def update(self, new_data):
+    def getNumber(self):
+        pass
+
+    @abstractmethod
+    def execute(self):
         pass
 
 
-class JSONFileWatcher:
-    def __init__(self, file_path):
-        self.file_path = file_path
-        self.last_data = self.read_file()
-        self.observers = []
+class RandomNumberGenerator(NumberGenerator):   #状態が変化したら、登録されているObserver役に伝える
+    def __init__(self):
+        self.__number = 0
+        super(RandomNumberGenerator, self).__init__()
 
-    def read_file(self):
-        if not os.path.exists(self.file_path):
-            return {}
-        with open(self.file_path, 'r') as file:
-            return json.load(file)
+    def getNumber(self):
+        return self.__number
 
-    def addObserver(self, observer):
-        self.observers.append(observer)
-
-    def deleteObserver(self, observer):
-        self.observers.remove(observer)
-
-    def notifyObservers(self, new_data):
-        for observer in self.observers:
-            observer.update(new_data)
-
-    def watch(self):
-        while True:
-            time.sleep(1)
-            current_data = self.read_file()
-            if current_data != self.last_data:
-                self.notifyObservers(current_data)
-                self.last_data = current_data
+    def execute(self):  #ランダムに20個の数字生成
+        for _ in range(20):
+            self.__number = random.randint(0, 49)
+            self.notifyObserver()
 
 
-class JSONFileWriter(FileObserver):
-    def __init__(self, output_file_path):
-        self.output_file_path = output_file_path
 
-    def update(self, new_data):
-        with open(self.output_file_path, 'w') as file:
-            json.dump(new_data, file, indent=4)
-        print(f"Changes detected and written to {self.output_file_path}")
+class Observer(metaclass=ABCMeta):  #状態変化の監視
+    @abstractmethod
+    def update(self, ganerator):
+        pass
+
+
+class DigitObserver(Observer):
+    def update(self, generator):
+        print("DigitObservser: {0}".format(generator.getNumber()))
+        time.sleep(0.1)
+
+
+class GraphObserver(Observer):
+    def update(self, generator):
+        print("GraphicObserver:", end='')
+        count = generator.getNumber()
+        for _ in range(count):
+            print('*', end='')
+        print("")
+        time.sleep(0.1)
+
+def startMain():
+    generator = RandomNumberGenerator()
+    observer1 = DigitObserver()
+    observer2 = GraphObserver()
+    generator.addObserver(observer1)
+    generator.addObserver(observer2)
+    generator.execute()
 
 
 if __name__ == '__main__':
-    input_file_path = 'file1.json'
-    output_file_path = 'file2.json'
-
-    watcher = JSONFileWatcher(input_file_path)
-    writer = JSONFileWriter(output_file_path)
-
-    watcher.addObserver(writer)
-    watcher.watch()
+    while(True):
+        time.sleep(1)
+        startMain()
