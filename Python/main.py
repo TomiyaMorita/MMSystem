@@ -10,7 +10,7 @@ import queue
 import random
 from collections import deque
 
-operatingMode = 1   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
+operatingMode = 0   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
 # ミューテックスの作成
 lock = threading.Lock()
 # キューの作成（情報を送信するため）
@@ -40,41 +40,42 @@ class DrinkBotMotionHandler:
         cls.ex_ustate.update(ex_state)
 
     @classmethod
-    def motion_data(cls, mode):
+    def plcUpdated(cls):
         wadr = [0]
         adr = [0] * 250
-        machineStopFlag = True
-      
-        if mode == 1:
-            if not cls.in_ustate.get("machineReady", True):  #物理非常停止時
-                machineStopFlag = False
-                cls.ex_ustate.update(runMode="hardwareEmergency",machineEmergency=True)
-            elif not cls.in_bstate.get("machineReady", True) and cls.in_ustate.get("machineReady", False):
-                cls.ex_ustate.update(runMode="autoOperationStop",machineEmergency = False)
-            if cls.ex_ustate.get("errorNum", 0) != 0 :    #エラー発生時
-                machineStopFlag = False
-                cls.ex_ustate["runMode"]="errorEmergency"
-            if cls.in_ustate.get("plcConnectError", False):
-                cls.ex_ustate["runMode"]="PLCConnectError!"
-                machineStopFlag = False
+        if not cls.in_ustate.get("machineReady", True):  #物理非常停止時
+            cls.ex_ustate.update(runMode="hardwareEmergency",machineEmergency=True)
+        elif not cls.in_bstate.get("machineReady", True) and cls.in_ustate.get("machineReady", False):
+            cls.ex_ustate.update(runMode="autoOperationStop",machineEmergency = False)
+        if cls.ex_ustate.get("errorNum", 0) != 0 :    #エラー発生時
+            cls.ex_ustate["runMode"]="errorEmergency"
+        if cls.in_ustate.get("plcConnectError", False):
+            cls.ex_ustate["runMode"]="PLCConnectError!"
         #ステータスの定期更新により実行されるモード
-        if machineStopFlag and mode == 1:
+        if cls.in_ustate.get("machineReady", False) and cls.ex_ustate.get("errorNum", 0) == 0 :
             cls.ex_ustate.update(cls.awaitingupdate)   #更新待機中のステートをアップデート
             cls.awaitingupdate.clear()
+
              ###自動動作停止中###
-            if cls.in_bstate.get("makingDrinks", False) and not cls.in_ustate.get("makingDrinks", True) and cls.ex_ustate.get("autoMode", False):    #搬送レーンにあるドリンクがなくなり次第自動動作停止
-                adr[7] = 1
-                wadr[0] = 2
-                cls.ex_ustate.update(runMode="sequenceStopStanby")
-            elif not cls.in_ustate.get("makingDrinks", True) and cls.ex_bstate.get("operating", False) and not cls.ex_ustate.get("operating", True):    #全動作終了後、自動動作シーケンス終了
-                adr[7] = 2
-                wadr[0] = 2
-                cls.ex_ustate.update(runMode = "autoOperationStop")
+            if cls.ex_ustate.get("runMode","")=="stanbyStopOperation":
+                if cls.in_bstate.get("makingDrinks", False) and not cls.in_ustate.get("makingDrinks", True) and cls.ex_ustate.get("autoMode", False):    #搬送レーンにあるドリンクがなくなり次第自動動作停止
+                    adr[7] = 1
+                    wadr[0] = 2
+                    cls.ex_ustate.update(runMode="sequenceStopStanby")
+            if cls.ex_ustate.get("runMode","")=="sequenceStopStanby":
+                if not cls.in_ustate.get("makingDrinks", True) and cls.ex_bstate.get("operating", False) and not cls.ex_ustate.get("operating", True):    #全動作終了後、自動動作シーケンス終了
+                    adr[7] = 2
+                    wadr[0] = 2
+                    cls.ex_ustate.update(runMode = "autoOperationStop")
             ###自動動作開始中###  
             if not cls.ex_ustate.get("autoMode", True):
-                if cls.in_ustate.get("glassManualRemovalCompleted", False):   #搬送機から手動グラス取り出し時完了
+                # if not cls.in_bstate.get("glassManualRemovalCompleted", True) and cls.in_ustate.get("glassManualRemovalCompleted", False):   
+                if not cls.in_bstate.get("glassManualRemovalCompleted", True) and cls.in_ustate.get("glassManualRemovalCompleted", False):  
+                    if not cls.in_ustate.get("glassElevatorSensor", True):   #昇降部から手動グラス取り出し完了
                         cls.ex_ustate.update(glassManualRemoving = False,runMode = "waitingGlassRemoved")
-                if cls.in_bstate.get("conveyourDrinkSensor", False) and not cls.in_ustate.get("conveyourDrinkSensor", True)  and not cls.ex_ustate.get("glassManualRemoving",False) and not cls.in_ustate.get("glassManualRemovalCompleted", True):
+                    elif cls.in_ustate.get("glassElevatorSensor", False):
+                        cls.ex_ustate.update(runMode = "elevatorError!")
+                if cls.in_bstate.get("conveyourDrinkSensor", False) and not cls.in_ustate.get("conveyourDrinkSensor", True)  and not cls.ex_ustate.get("glassManualRemoving",False) and not cls.in_ustate.get("glassManualRemovalCompleted", True): #搬送部からグラス取り除き完了
                         cls.ex_ustate.update(drinkRemovedError=False,runMode = "autoOperationStop")
             if cls.in_ustate.get("restartError", False):
                  cls.ex_ustate.update(runMode = "restartError",drinkRemovedError=True)
@@ -97,20 +98,23 @@ class DrinkBotMotionHandler:
             ###常時###
             if cls.ex_bstate.get("iceRequest", False) and not cls.ex_ustate.get("iceRequest", True):  #氷減少センサーがオンからオフになったとき、氷管理カウンターを0に戻す
                 cls.icelimitcount = 0
-
-
-        #モバイルオーダーシステムからのcontrole.json更新指示で変更になる動作モード
-        if machineStopFlag and mode == 2:
-            ###非常停止指示時###
-            if cls.in_ustate.get("controleMode", "")=="softwareEmergency": #ソフトウェア非常停止モードの時の動作
-                adr[7] = 1
-                wadr[0] = 2
-                cls.awaitingupdate.update(runMode="softwareEmergency")
-            ###エラーリセット指示時###
-            if cls.in_ustate.get("controleMode", "")=="errorReset":    
-                adr[1] = 1
-                wadr[0] = 2
-                cls.awaitingupdate.update(runMode="stanbyErrorReaet")
+        wadr += adr
+        return wadr
+    @classmethod
+    def controleUpdated(cls):
+        wadr = [0]
+        adr = [0] * 250
+        ###非常停止指示時###
+        if cls.in_ustate.get("controleMode", "")=="softwareEmergency": #ソフトウェア非常停止モードの時の動作
+            adr[7] = 1
+            wadr[0] = 2
+            cls.awaitingupdate.update(runMode="softwareEmergency")
+        ###エラーリセット指示時###
+        if cls.in_ustate.get("controleMode", "")=="errorReset":    
+            adr[1] = 1
+            wadr[0] = 2
+            cls.awaitingupdate.update(runMode="stanbyErrorReaet")
+        if cls.in_ustate.get("machineReady", False) and cls.ex_ustate.get("errorNum", 0) == 0 :    
             ###自動動作開始指示時###
             if cls.in_ustate.get("controleMode", "")=="autoModeStart" and not cls.ex_ustate.get("operating", True):
                 if not cls.in_ustate.get("glassElevatorSensor", True) and not cls.in_ustate.get("conveyourDrinkSensor", True):  #昇降機と搬送機のセンサーがどちらもオフなら、自動運転開始
@@ -125,13 +129,17 @@ class DrinkBotMotionHandler:
                     wadr[0] = 2
                     cls.awaitingupdate.update(glassManualRemoving = True , runMode="stanbyRemoveGlass")
             ###自動動作停止指示時###
-            if cls.in_ustate.get("controleMode", "")=="autoModeStop" and cls.ex_ustate.get("operating", False):    
+            if cls.in_ustate.get("controleMode", "")=="autoModeStop" :    
                 if cls.in_ustate.get("makingDrinks", False) :   #自動動作停止指示がされたがドリンク製作中なら、ドリンク製作終了スタンバイモードへ
                     cls.awaitingupdate.update(runMode = "stanbyStopOperation")
-                elif not cls.in_ustate.get("makingDrinks", False) :     #搬送レーンにあるドリンクが無ければ自動動作停止
+                elif not cls.in_ustate.get("makingDrinks", False) and cls.ex_ustate.get("autoMode", True):     #搬送レーンにドリンクが無く、自動動作中なら自動動作シーケンス停止
                     adr[7] = 1
                     wadr[0] = 2
                     cls.awaitingupdate.update(runMode = "sequenceStopStanby")
+                elif not cls.in_ustate.get("makingDrinks", False) and not cls.ex_ustate.get("autoMode", False):     #搬送レーンにドリンクが無く、自動動作中なら自動動作シーケンス停止
+                    adr[7] = 2
+                    wadr[0] = 2
+                    cls.awaitingupdate.update(runMode = "autoOperationStop")
 
             ###ドリンク取り除き完了指示時###
             if cls.in_ustate.get("controleMode", "")=="drinkRemoved" :
@@ -159,9 +167,13 @@ class DrinkBotMotionHandler:
                     wadr[0] = 2
                     cls.awaitingupdate.update(runMode = "manualPumpOFF")
                     # cls.awaitingupdate["runMode"] = "maintenance"
-
-        #モバイルオーダーシステムからのnextOrder.json更新指示で変更になる動作モード
-        if machineStopFlag and cls.ex_ustate.get("autoMode", False) and mode == 3:
+        wadr += adr
+        return wadr
+    @classmethod
+    def nextOrderUpdated(cls):
+        wadr = [0]
+        adr = [0] * 250
+        if  cls.in_ustate.get("machineReady", False) and cls.ex_ustate.get("errorNum", 0) == 0 and cls.ex_ustate.get("autoMode", False):
             if cls.in_ustate.get("useIce", False) and cls.in_ustate.get("iceRequest", False):   #氷を使用するドリンクで、氷補充がONの時
                 cls.icelimitcount += 1
                 if cls.icelimitcount > 100000:
@@ -206,13 +218,13 @@ def jsonData(path):
             data = json.load(f)
             if data["controleID"] != controleid:
                 controleid = data["controleID"]
-                return data, 2
+                return data, 1
     elif path == "nextOrder.json":
         with open(path, 'r') as f:
             data = json.load(f)
             if data["nextOrderID"] != nextorderid:
                 nextorderid = data["nextOrderID"]
-                return data, 3
+                return data, 2
     return None, None
 
 class MyFileWatchHandler(PatternMatchingEventHandler):
@@ -226,7 +238,10 @@ class MyFileWatchHandler(PatternMatchingEventHandler):
                 rdata, mode = jsonData(filename)
                 if rdata is not None:
                     DrinkBotMotionHandler.update_instate(rdata)    #ステータス情報更新
-                    senddata = DrinkBotMotionHandler.motion_data(mode)
+                    if mode == 1:
+                        senddata = DrinkBotMotionHandler.controleUpdated()
+                    elif mode ==2 :
+                        senddata = DrinkBotMotionHandler.nextOrderUpdated()
                     info_queue.put(senddata)
 
     def checkjsonfile(self, path):
@@ -334,8 +349,11 @@ def info_sender():
                 edata, idata = convertPlcState(rdata[0],rdata[1:])   #PLCから取得したデータをシステム内で使用する辞書型にコンバート
                 DrinkBotMotionHandler.update_instate(idata)    #最新のPLCステータスにシステム内辞書を更新
                 DrinkBotMotionHandler.checkUpdateState(edata)   #state.jsonに書き込む必要のあるステータスのみの更新確認
-                senddata = DrinkBotMotionHandler.motion_data(info[0])   #ステータスの更新により動作を行うアドレスを取得
+                senddata = DrinkBotMotionHandler.plcUpdated()   #ステータスの更新により動作を行うアドレスを取得
                 if DrinkBotMotionHandler.ex_bstate != DrinkBotMotionHandler.ex_ustate:
+                    for key in DrinkBotMotionHandler.ex_bstate:
+                        if key in DrinkBotMotionHandler.ex_ustate and DrinkBotMotionHandler.ex_bstate[key] != DrinkBotMotionHandler.ex_ustate[key]:
+                            print("differentis",key)
                     # print("stateChange!!")
                     print("runMode",DrinkBotMotionHandler.ex_ustate["runMode"])
                     with open("state.json", 'r') as f:
