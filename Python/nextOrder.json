@@ -1,20 +1,16 @@
 {
-  "nextOrderID": 13619,
-  "orderNum": 2510,
-  "completionLaneNum": 1,
+  "nextOrderID": 13624,
+  "orderNum": 2515,
+  "completionLaneNum": 0,
   "glassLaneNum": [
-    10,
-    11
+    4,
+    5
   ],
-  "useIce": true,
+  "useIce": false,
   "drinks": [
     {
-      "pumpNum": 6,
-      "time": 5000
-    },
-    {
-      "pumpNum": 41,
-      "time": 8000
+      "pumpNum": 43,
+      "time": 10000
     }
   ]
 }
