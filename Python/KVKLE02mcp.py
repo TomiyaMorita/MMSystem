@@ -509,7 +509,7 @@ class MCProtcol3E:
         return int(upper_bits, 2), int(lower_bits, 2)
 
 def toPLC(data):
-    mcp = MCProtcol3E('192.168.0.190', 8501)
+    mcp = MCProtcol3E('192.168.0.190', 5000)
     mode=data[0]
     # mcp = MCProtcol3E('192.168.3.2', 4999)
     match mode :            
@@ -527,7 +527,7 @@ def toPLC(data):
             firstdevice="D2000"
             senddata=struct.pack("250i",*setdrink) 
             rcv=mcp.write(firstdevice,senddata)
-            # print(senddata)       
+            print(setdrink)       
                 
     
 if __name__ == "__main__":
