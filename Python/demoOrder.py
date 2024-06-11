@@ -35,19 +35,19 @@ def nextOrder(ordermode):
     num=ojdata["orderNum"]
     num = 0 if num >100000 else num+1
     lanenum=ojdata["completionLaneNum"]
-    lanenum = 0 if lanenum >1 else lanenum+1
+    lanenum = 1 if lanenum >2 else lanenum+1
     ojdata.update(nextOrderID=id,orderNum=num,completionLaneNum=lanenum)
     send=True
     match ordermode:
-        case "1":   #ハイボール1
-              mate=[{"pumpNum":6,"time":5000},{"pumpNum":41,"time":8000}]
-              ojdata.update(glassLaneNum=[10,11],useIce=True,drinks=mate)
+        case "1":   #ハイボール
+              mate=[{"pumpNum":6,"time":5000},{"pumpNum":41,"time":10000}]
+              ojdata.update(glassLaneNum=[10,11,12],useIce=True,drinks=mate)
         case "2":   #レモンサワー
-              mate=[{"pumpNum":30,"time":10000},{"pumpNum":41,"time":8000}]
-              ojdata.update(glassLaneNum=[10,11],useIce=True,drinks=mate)
+              mate=[{"pumpNum":30,"time":10000},{"pumpNum":41,"time":5000}]
+              ojdata.update(glassLaneNum=[10,11,12],useIce=True,drinks=mate)
         case "3":   #ビール
               mate=[{"pumpNum":43,"time":10000}]
-              ojdata.update(glassLaneNum=[4,5],useIce=False,drinks=mate)
+              ojdata.update(glassLaneNum=[1,2,3],useIce=False,drinks=mate)
         # case "4":
         #       mate=[{"pumpNum":1,"time":15000}]
         #       ojdata.update(glassLaneNum=[7,8,9],useIce=False,drinks=mate)

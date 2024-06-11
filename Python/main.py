@@ -63,7 +63,7 @@ class DrinkBotMotionHandler:
                     wadr[0] = 2
                     cls.ex_ustate.update(runMode="sequenceStopStanby")
             if cls.ex_ustate.get("runMode","")=="sequenceStopStanby":
-                if not cls.in_ustate.get("makingDrinks", True) and cls.ex_bstate.get("operating", False) and not cls.ex_ustate.get("operating", True):    #全動作終了後、自動動作シーケンス終了
+                if not cls.in_ustate.get("makingDrinks", True) and not cls.ex_ustate.get("operating", True):    #全動作終了後、自動動作シーケンス終了
                     adr[7] = 2
                     wadr[0] = 2
                     cls.ex_ustate.update(runMode = "autoOperationStop")
@@ -144,8 +144,8 @@ class DrinkBotMotionHandler:
             ###ドリンク取り除き完了指示時###
             if cls.in_ustate.get("controleMode", "")=="drinkRemoved" :
                 if not cls.ex_ustate.get("operating", True) and not cls.in_ustate.get("conveyourDrinkSensor", True):   #ドリンクリセット指示がされた
-                    adr[7] = 2  #自動動作シーケンス終了
                     adr[3] = 1  #ドリンク取り除き完了
+                    adr[7] = 2  #自動動作シーケンス終了
                     wadr[0] = 2    
                     cls.awaitingupdate.update(runMode = "PLCdrinkResetStanby",drinkRemovedError = False)
                 elif cls.in_ustate.get("conveyourDrinkSensor", False):
@@ -199,13 +199,14 @@ class DrinkBotMotionHandler:
                 adr[5] = cls.in_ustate.get("completionLaneNum", 0)
                 adr[10] = cls.in_ustate.get("orderNum", 0)
                 adr[11] = useglass
-                adr[12] = 0 if cls.in_ustate.get("useIce", False) else 1  #useIceがtrueなら氷入れる,0=氷あり
+                adr[12] = 1 if cls.in_ustate.get("useIce", False) else 0  #useIceがtrueなら氷入れる,1=氷あり
                 drinks = cls.in_ustate.get('drinks', [])
                 for i in range(len(drinks)): #使用する材料の数だけループ
                     firstArynum = 15
                     drinknum = firstArynum + 5 * (drinks[i]['pumpNum'] - 1)
                     adr[drinknum] = 1
                     adr[drinknum + 1] = drinks[i]['time']
+                    print("使用ドリンク",drinknum)
         # print(cls.ex_ustate["runMode"])
         wadr += adr
         return wadr

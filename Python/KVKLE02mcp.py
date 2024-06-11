@@ -527,7 +527,7 @@ def toPLC(data):
             firstdevice="D2000"
             senddata=struct.pack("250i",*setdrink) 
             rcv=mcp.write(firstdevice,senddata)
-            # print(senddata)       
+            print(setdrink)       
                 
     
 if __name__ == "__main__":
