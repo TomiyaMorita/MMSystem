@@ -1,5 +1,5 @@
 {
-  "controleID": 383,
-  "controleMode": "manualPumpOFF",
+  "controleID": 387,
+  "controleMode": "autoModeStop",
   "manualPumpNum": 8
 }
