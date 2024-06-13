@@ -1,7 +1,7 @@
 {
-  "stateID": 566,
+  "stateID": 683,
   "machineEmergency": false,
-  "runMode": "stanbyStopOperation",
+  "runMode": "autoOperation",
   "orderReady": true,
   "glassManualRemoving": false,
   "drinkRemovedError": false,
@@ -12,10 +12,10 @@
   "orderError": false,
   "orderErrorNum": 0,
   "autoMode": true,
-  "operating": false,
+  "operating": true,
   "errorNum": 0,
-  "orderCompleteNum": 2510,
-  "drinkCompletionNum": 2510,
+  "orderCompleteNum": 2574,
+  "drinkCompletionNum": 2574,
   "drinkReseted": false,
   "iceRequest": false,
   "providedLanesFull": [

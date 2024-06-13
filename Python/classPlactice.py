@@ -20,16 +20,22 @@ class TestClass():
         print("updateStatein_ustate",cls.in_ustate)
         print("updateStateex_bstate",cls.ex_bstate)
         print("updateStateex_ustate",cls.ex_ustate)
-        return cls.plcUpdated(cls)
+        b={}
+        a,b=cls.plcUpdated(cls)
+        cls.in_ustate.update(b)
+      
+        return a,b
     def plcUpdated(self):
-        print("plcUpdatedin_bstate",self.in_bstate)
+        self.in_ustate.update(a=100)
+        a=[1]
+        # print("plcUpdatedin_bstate",self.in_bstate)
         print("plcUpdatedin_ustate",self.in_ustate)
-        print("plcUpdatedex_bstate",self.ex_bstate)
-        print("plcUpdatedex_ustate",self.ex_ustate)
-        return 1
+        # print("plcUpdatedex_bstate",self.ex_bstate)
+        # print("plcUpdatedex_ustate",self.ex_ustate)
+        return a,self.in_ustate
 
 def updatestate(a,b):
-    a=TestClass.updateState(a)
+    a,b=TestClass.updateState(a)
     print(a)
 if __name__ == "__main__":
     a={
@@ -51,5 +57,9 @@ if __name__ == "__main__":
         "b":6
     }
     s=TestClass(a,b)
-    s.updateState(a2,b2)
-    updatestate(a3,b3)
+    # s.updateState(a2,b2)
+    # print("print",TestClass.in_ustate)
+    # updatestate(a3,b3)
+    # print("print",TestClass.in_ustate)
+    # updatestate(a,b)
+    # print("print",TestClass.in_ustate)
