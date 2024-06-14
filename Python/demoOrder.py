@@ -57,8 +57,7 @@ def nextOrder(ordermode):
         with open('nextOrder.json', 'w') as f:
             json.dump(ojdata, f, indent=2, ensure_ascii=False)
     return send
-    
-     
+
 def controle(ctrmode):
     with open("controle.json", 'r') as c:
         cjdata = json.load(c)
@@ -87,14 +86,72 @@ def controle(ctrmode):
         with open('controle.json', 'w') as f:
             json.dump(cjdata, f, indent=2, ensure_ascii=False)
     return send
-
+def changePLCData(plcmode):
+    send = True
+    plcstate=[0]*45
+    plcstate[0]=1
+    for i in range (30,44):
+        plcstate[i]=1
+    with open("plcState.json", 'r') as c:
+        pjdata = json.load(c)
+    match plcmode:
+        case "1":
+            plcstate[4]=1
+            plcstate[5]=1
+            plcstate[10]=1
+            pjdata.update(plcdata=plcstate)
+        case "2":
+            plcstate[4]=1
+            plcstate[5]=1
+            pjdata.update(plcdata=plcstate)
+        case "3":
+            pjdata.update(plcdata=plcstate)
+        case "4":
+            plcstate[5]=1
+            pjdata.update(plcdata=plcstate)    
+        case "5":
+            plcstate[4]=1
+            plcstate[5]=1
+            plcstate[10]=1
+            pjdata.update(plcdata=plcstate)
+        case "6":
+            plcstate[17]=1
+            pjdata.update(plcdata=plcstate)
+        case "7":
+            plcstate[18]=1
+            pjdata.update(plcdata=plcstate)
+        case "8":
+            plcstate[7]=1
+            pjdata.update(plcdata=plcstate)    
+        case "9":
+            plcstate[4]=1
+            plcstate[5]=1
+            plcstate[10]=1
+            for i in range (30,44):
+                plcstate[i]=0
+            pjdata.update(plcdata=plcstate)
+        case "10":
+            plcstate[4]=1
+            plcstate[5]=1
+            plcstate[10]=1
+            plcstate[22]=1
+            pjdata.update(plcdata=plcstate)
+        case "11":
+            plcstate[0]=0
+            pjdata.update(plcdata=plcstate)
+        case _:
+            send=False 
+    if send == True:
+        with open('plcState.json', 'w') as f:
+            json.dump(pjdata, f, ensure_ascii=False)
+    return send
 if __name__ == "__main__":
     loop=True
     while(loop):
         dict={}
         input("Enterキーを押してステータスを取得してください")
         stateCheck()
-        m=input("モードを選択してください\n 1:オーダーモード 2:コントロールモード 3:終了\n")
+        m=input("モードを選択してください\n 1:オーダーモード 2:コントロールモード 3:PLCステータスチェンジ 4:終了\n")
         match m:
             case "1":
                 p=input("コマンドを選択してください\n1:ハイボール\n2:レモンサワー\n3:ビール\n")               
@@ -104,6 +161,9 @@ if __name__ == "__main__":
                 p=input("コマンドを選択してください\n1:非常停止\n2:自動動作開始\n3:自動動作停止\n4:エラー時ドリンク取り除き完了\n5:指定ポンプON\n6:指定ポンプOFF\n7:エラーリセット\n")
                 loop=controle(p)
             case "3":
+                p=input("コマンドを選択してください\n1:ドリンク製作中注文受付可\n2:自動運転中注文受付不可\n3:自動運転停止中\n4:自動動作停止時動作停止待ち\n5:自動運転時ドリンク製作終了\n6:ドリンクリセット完了\n7:自動動作開始時グラス手動取り出し完了\n8:自動動作開始時動作継続不可エラー\n9:グラスレーングラス無し\n10:氷無し\n11:排出レーン満杯\n12:非常停止ボタン押下\n")
+                loop=changePLCData(p)
+            case "4":
                 print("終了")
                 loop = False
             case _:

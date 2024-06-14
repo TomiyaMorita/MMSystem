@@ -10,15 +10,13 @@ import queue
 import random
 from collections import deque
 
-operatingMode = 0   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
+operatingMode = 1   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
 # ミューテックスの作成
 lock = threading.Lock()
 # キューの作成（情報を送信するため）
 info_queue = queue.Queue()
 # 共有リソース# 保持するデータの最大長を設定
 shared_data = deque(maxlen=10)
-controleid = 0
-nextorderid = 0
 
 class DrinkBotMotionHandler:
     in_ustate = {}
@@ -249,24 +247,11 @@ class DrinkBotMotionHandler:
         wadr += adr
         return wadr,udstate
 
-def jsonData(path):
-    global controleid
-    global nextorderid
-    if path == "controle.json":
-        with open(path, 'r') as f:
-            data = json.load(f)
-            if data["controleID"] != controleid:
-                controleid = data["controleID"]
-                return data, 1
-    elif path == "nextOrder.json":
-        with open(path, 'r') as f:
-            data = json.load(f)
-            if data["nextOrderID"] != nextorderid:
-                nextorderid = data["nextOrderID"]
-                return data, 2
-    return None, None
+
 
 class MyFileWatchHandler(PatternMatchingEventHandler):
+    controleid = 0
+    nextorderid = 0
     def on_modified(self, event):
         senddata = []
         with lock:
@@ -274,7 +259,7 @@ class MyFileWatchHandler(PatternMatchingEventHandler):
             if self.checkjsonfile(filepath):
                 filename = os.path.basename(filepath)
                 #jsonファイルの存在確認
-                rdata, mode = jsonData(filename)
+                rdata, mode = self.jsonData(filename)
                 if rdata is not None:
                     if mode == 1:
                         senddata,udstate ,udflag = DrinkBotMotionHandler.updateState("controle",rdata)
@@ -288,7 +273,20 @@ class MyFileWatchHandler(PatternMatchingEventHandler):
                 return bool(json.load(c))
         except json.JSONDecodeError:
             return False
-
+    def jsonData(self,path):
+        if path == "controle.json":
+            with open(path, 'r') as f:
+                data = json.load(f)
+                if data["controleID"] != self.controleid:
+                    self.controleid = data["controleID"]
+                    return data, 1
+        elif path == "nextOrder.json":
+            with open(path, 'r') as f:
+                data = json.load(f)
+                if data["nextOrderID"] != self.nextorderid:
+                    self.nextorderid = data["nextOrderID"]
+                    return data, 2
+        return None, None
 def updateJson():
     #jsonファイルの更新を監視する関数
     # 対象ディレクトリ
