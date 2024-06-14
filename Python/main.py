@@ -416,11 +416,10 @@ def info_sender():
         info_queue.task_done()
 
 if __name__ == "__main__":
-    #起動時のjsonファイル読み込み
-    #最終的にはinit用のステータス初期化プログラムを別で作成
     data0=[0]*50
     edata, idata = convertPlcState(data0[0],data0[1:])
         
+    #起動時のjsonファイル読み込み
     with open("controle.json", 'r') as f:
         data1 = json.load(f)
     with open("nextOrder.json", 'r') as f:
