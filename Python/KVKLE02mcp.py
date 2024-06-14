@@ -133,13 +133,20 @@ class MCProtcol3E:
 
         senddata = self.mcpheader(cmd) + cmd
         s.sendto(senddata, self.addr)
+        try:
+            res = s.recv(BUFSIZE)
+            data = res[9:]
+            return data
+        except:
+            errordata=[0x98,0x01]
+            return errordata
 
-        res = s.recv(BUFSIZE)
-        if res[9] == 0 and res[10] == 0:
-            data = res[9:]                #[9],[10]:errorcode,[11:]:data
-            return data                   
-        else:
-            return None
+        # res = s.recv(BUFSIZE)
+        # if res[9] == 0 and res[10] == 0:
+        #     data = res[9:]                #[9],[10]:errorcode,[11:]:data
+        #     return data                   
+        # else:
+        #     return None
 
 
     def write(self, memaddr, writedata, bitSize = 0):
@@ -509,17 +516,17 @@ class MCProtcol3E:
         return int(upper_bits, 2), int(lower_bits, 2)
 
 def toPLC(data):
-    mcp = MCProtcol3E('192.168.0.190', 8501)
+    # mcp = MCProtcol3E('192.168.0.190', 5000)
+    mcp = MCProtcol3E('192.168.0.190', 4999)
     mode=data[0]
-    # mcp = MCProtcol3E('192.168.3.2', 4999)
     match mode :            
         case 1:
-            rcv = mcp.RandomRead('D3000,D3006,D3008,D3010,D3012,D3014,D3020,D3030,D3032,D3034,D3036,D3040,D3042,D3044,D3050,D3052,D3054,D3060,D3062,D3064,D3066,D3068,D3070,D3072,D3074,D3076,D3078,D3080,D3082,D3084,D3086,D3088')
-            # rcv = mcp.RandomRead('D3000')
+            # rcv = mcp.RandomRead('D3000,D3006,D3008,D3010,D3012,D3014,D3020,D3030,D3032,D3034,D3036,D3040,D3042,D3044,D3050,D3052,D3054,D3060,D3062,D3064,D3066,D3068,D3070,D3072,D3074,D3076,D3078,D3080,D3082,D3084,D3086,D3088')
+            rcv = mcp.read('D3000', 100)
             errornum=mcp.toInt16(rcv[:2])
             rcvdata=mcp.toInt32(rcv[2:])
             plcdata=errornum+rcvdata
-            # print(plcdata)
+            # print(errornum)
             return plcdata
         case 2:
             setdrink=data[1:]
@@ -527,7 +534,7 @@ def toPLC(data):
             firstdevice="D2000"
             senddata=struct.pack("250i",*setdrink) 
             rcv=mcp.write(firstdevice,senddata)
-            # print(senddata)       
+            # print(setdrink)       
                 
     
 if __name__ == "__main__":

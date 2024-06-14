@@ -9,8 +9,7 @@ import KVKLE02mcp
 import queue
 import random
 from collections import deque
-
-operatingMode = 0   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
+operatingMode = 1   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
 # ミューテックスの作成
 lock = threading.Lock()
 # キューの作成（情報を送信するため）
@@ -248,72 +247,7 @@ class DrinkBotMotionHandler:
         # print(cls.ex_ustate["runMode"])
         wadr += adr
         return wadr,udstate
-
-def jsonData(path):
-    global controleid
-    global nextorderid
-    if path == "controle.json":
-        with open(path, 'r') as f:
-            data = json.load(f)
-            if data["controleID"] != controleid:
-                controleid = data["controleID"]
-                return data, 1
-    elif path == "nextOrder.json":
-        with open(path, 'r') as f:
-            data = json.load(f)
-            if data["nextOrderID"] != nextorderid:
-                nextorderid = data["nextOrderID"]
-                return data, 2
-    return None, None
-
-class MyFileWatchHandler(PatternMatchingEventHandler):
-    def on_modified(self, event):
-        senddata = []
-        with lock:
-            filepath = event.src_path
-            if self.checkjsonfile(filepath):
-                filename = os.path.basename(filepath)
-                #jsonファイルの存在確認
-                rdata, mode = jsonData(filename)
-                if rdata is not None:
-                    if mode == 1:
-                        senddata,udstate ,udflag = DrinkBotMotionHandler.updateState("controle",rdata)
-                    elif mode ==2 :
-                        senddata,udstate ,udflag = DrinkBotMotionHandler.updateState("order",rdata)
-                    info_queue.put(senddata)
-
-    def checkjsonfile(self, path):
-        try:
-            with open(path, 'r') as c:
-                return bool(json.load(c))
-        except json.JSONDecodeError:
-            return False
-
-def updateJson():
-    #jsonファイルの更新を監視する関数
-    # 対象ディレクトリ
-    DIR_WATCH = '.'
-    PATTERNS = ['*.json']
-    # 対象ファイルパスのパターン
-    event_handler = MyFileWatchHandler(PATTERNS)
-    observer = Observer()
-    observer.schedule(event_handler, DIR_WATCH, recursive=True)
-    observer.start()
-    print("start")
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
-    print("end")
-
-def checkPLC():
-    while True:
-        time.sleep(1)   # 定期的な間隔で実行（例：5秒ごと）
-        with lock:
-            info_queue.put([1])
-
+    
 def resetState():
     return {
         "machineEmergency":False, #非常停止ボタン押下
@@ -374,11 +308,13 @@ def convertPlcState(errorcode,adr):
 def updateSender(plcdata,jsondata,updateflag):
     newjsondata={}
     if updateflag:
+        ###処理に関係ないただのLog###
         for key in DrinkBotMotionHandler.ex_bstate:
             if key in DrinkBotMotionHandler.ex_ustate and DrinkBotMotionHandler.ex_bstate[key] != DrinkBotMotionHandler.ex_ustate[key]:
                 print("differentis",key)
         # print("stateChange!!")
         print("runMode",DrinkBotMotionHandler.ex_ustate["runMode"])
+
         with open("state.json", 'r') as f:
             jdata = json.load(f)
             stateid=jdata.get("stateID", 0)
@@ -414,6 +350,73 @@ def info_sender():
                 elif operatingMode == 1:
                     testPLC.test(info)
         info_queue.task_done()
+###PLCの定期ステータス取得###
+def checkPLC():
+    while True:
+        time.sleep(1)   # 定期的な間隔で実行（例：5秒ごと）
+        with lock:
+            info_queue.put([1])
+
+###jsonファイルの更新管理###
+class MyFileWatchHandler(PatternMatchingEventHandler):
+    controleid=0
+    nextorderid=0
+    def on_modified(self, event):
+        senddata = []
+        with lock:
+            filepath = event.src_path
+            if self.checkjsonfile(filepath):
+                filename = os.path.basename(filepath)
+                #jsonファイルの存在確認
+                rdata, mode = self.jsonData(filename)
+                if rdata is not None:
+                    if mode == 1:
+                        senddata,udstate ,udflag = DrinkBotMotionHandler.updateState("controle",rdata)
+                    elif mode ==2 :
+                        senddata,udstate ,udflag = DrinkBotMotionHandler.updateState("order",rdata)
+                    info_queue.put(senddata)
+    
+    def jsonData(self,path):
+        
+        if path == "controle.json":
+            with open(path, 'r') as f:
+                data = json.load(f)
+                if data["controleID"] != self.controleid:
+                    self.controleid = data["controleID"]
+                    return data, 1
+        elif path == "nextOrder.json":
+            with open(path, 'r') as f:
+                data = json.load(f)
+                if data["nextOrderID"] != self.nextorderid:
+                    self.nextorderid = data["nextOrderID"]
+                    return data, 2
+        return None, None
+
+    def checkjsonfile(self, path):
+        try:
+            with open(path, 'r') as c:
+                return bool(json.load(c))
+        except json.JSONDecodeError:
+            return False
+
+def updateJson():
+    #jsonファイルの更新を監視する関数
+    # 対象ディレクトリ
+    DIR_WATCH = '.'
+    PATTERNS = ['*.json']
+    # 対象ファイルパスのパターン
+    event_handler = MyFileWatchHandler(PATTERNS)
+    observer = Observer()
+    observer.schedule(event_handler, DIR_WATCH, recursive=True)
+    observer.start()
+    print("start")
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
+    print("end")
 
 if __name__ == "__main__":
     data0=[0]*50
