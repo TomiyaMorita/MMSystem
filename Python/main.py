@@ -67,12 +67,16 @@ class DrinkBotMotionHandler:
             self.ex_ustate.update(runMode="autoOperationStop",machineEmergency = False)
         if self.ex_ustate.get("errorNum", 0) != 0 :    #エラー発生時
             self.ex_ustate["runMode"]="errorEmergency"
+        ###搬送機PLC接続エラー###
         if self.in_ustate.get("plcConnectError", False):
             self.ex_ustate["runMode"]="PLCConnectError!"
-        ###
+        ###自動動作継続不可エラー###
         if self.in_ustate.get("plccontinueError", False):
-            self.ex_ustate.update(runMode = "plccontinueError",continueError=True)
+            self.ex_ustate.update(runMode = "continueError",glassRemoveRequest = True)
             self.in_ustate.update(waittingFinishFlag=False)
+            if self.in_ustate.get("makingDrinks", True):
+                self.ex_ustate.update(drinkResetRequest=True)
+
         #ステータスの定期更新により実行されるモード
         if self.in_ustate.get("machineReady", False) and self.ex_ustate.get("errorNum", 0) == 0 :
 
@@ -95,7 +99,7 @@ class DrinkBotMotionHandler:
                 # if not cls.in_bstate.get("glassManualRemovalCompleted", True) and cls.in_ustate.get("glassManualRemovalCompleted", False):   
                 if not self.in_bstate.get("glassManualRemovalCompleted", True) and self.in_ustate.get("glassManualRemovalCompleted", False):  
                     if not self.in_ustate.get("glassElevatorSensor", True):   #昇降部から手動グラス取り出し完了
-                        self.ex_ustate.update(glassManualRemoving = False,runMode = "waitingGlassRemoved")
+                        self.ex_ustate.update(glassRemoveRequest = True,runMode = "waitingGlassRemoved")
                     elif self.in_ustate.get("glassElevatorSensor", False):
                         self.ex_ustate.update(runMode = "elevatorError!")
                     self.in_ustate.update(waittingFinishFlag=False)
@@ -104,6 +108,8 @@ class DrinkBotMotionHandler:
             if not self.ex_bstate.get("drinkReseted", True) and self.ex_ustate.get("drinkReseted", False):
                  self.ex_ustate.update(runMode = "PLCdrinkReseted")        
                  self.in_ustate.update(waittingFinishFlag=False)
+                 if self.in_ustate.get("conveyourDrinkSensor", False): #ドリンクリセットが完了したが、コンベア上にドリンクが残っている
+                    self.in_ustate.update(glassRemoveRequest = True , runMode="glassRemoveRequest")
 
             ######自動運転動作中#####
 
@@ -138,7 +144,7 @@ class DrinkBotMotionHandler:
         if self.in_ustate.get("controleMode", "")=="errorReset":    
             adr[1] = 1
             wadr[0] = 2
-            udstate.update(runMode="stanbyErrorReaet",continueError=False)
+            udstate.update(runMode="stanbyErrorReaet")
 
         if self.in_ustate.get("machineReady", False) and self.ex_ustate.get("errorNum", 0) == 0 and not self.in_ustate.get("waittingFinishFlag", False):    
             ###自動動作開始指示時###
@@ -146,12 +152,12 @@ class DrinkBotMotionHandler:
                 if not self.in_ustate.get("glassElevatorSensor", True) :  #昇降機のセンサーがオフなら、自動運転開始
                     adr[6] = 1
                     wadr[0] = 2
-                    udstate.update(glassManualRemoving = False, runMode = "autoOperation")
+                    udstate.update(runMode = "autoOperation")
                     self.in_ustate.update(waittingFinishFlag=False)
                 elif self.in_ustate.get("glassElevatorSensor", False):   #自動動作開始したが、グラスが昇降機上にあるため手動グラス取り出し開始
                     adr[4] = 1
                     wadr[0] = 2
-                    udstate.update(glassManualRemoving = True , runMode="stanbyRemoveGlass")
+                    udstate.update(runMode="stanbyRemoveGlass")
                     self.in_ustate.update(waittingFinishFlag=True)
             ###自動動作停止指示時###
             if self.in_ustate.get("controleMode", "")=="autoModeStop" :    
@@ -168,18 +174,20 @@ class DrinkBotMotionHandler:
                     wadr[0] = 2
                     udstate.update(runMode = "autoOperationStop")
                     self.in_ustate.update(waittingFinishFlag=False)
-
-            ###ドリンク取り除き完了指示時###
-            if self.in_ustate.get("controleMode", "")=="drinkRemoved" :
-                if not self.ex_ustate.get("operating", True) and not self.in_ustate.get("conveyourDrinkSensor", True):   #ドリンクリセット指示がされた
+            ###ドリンクリセット完了###
+            if self.in_ustate.get("controleMode", "")=="drinkResetCompleted" :
+                if not self.ex_ustate.get("autoMode", True) :   #ドリンクリセット指示がされた
                     adr[3] = 1  #ドリンク取り除き完了
                     adr[7] = 2  #自動動作シーケンス終了
                     wadr[0] = 2    
-                    udstate.update(runMode = "PLCdrinkResetStanby",continueError = False)
+                    udstate.update(runMode = "PLCdrinkResetStanby",drinkResetRequest=False)
                     self.in_ustate.update(waittingFinishFlag=True)
-                elif self.in_ustate.get("conveyourDrinkSensor", False): #ドリンクリセット指示がされたが、コンベア上にドリンクが残っている
-                    udstate.update(continueError = True , runMode="onConveyorError")
-            
+            ###グラス取り出し完了###    
+            if self.in_ustate.get("controleMode", "")=="glassRemoveCompleted" :
+                if self.in_ustate.get("conveyourDrinkSensor", False): #グラス取り出ししたが、コンベア上にドリンクが残っている
+                    udstate.update(glassRemoveRequest = True , runMode="glassRemoveRequest")
+                else:
+                    udstate.update(glassRemoveRequest = False , runMode="glassRemoveCompleted")
             ###ポンプON指示時###
             if self.in_ustate.get("controleMode", "")=="manualPumpON" :
                 if not self.ex_ustate.get("autoMode", True) :   #ポンプ手動運転ON
@@ -317,8 +325,8 @@ def resetState():
         "machineEmergency":False, #非常停止ボタン押下
         "runMode":"",  #現在実行中のモード
         "orderReady":False,
-        "glassManualRemoving":False,    #手動グラス取り出し中true
-        "continueError":False,  #自動動作継続エラー
+        "drinkResetRequest":False,    #ドリンクリセット要求
+        "glassRemoveRequest":False,  #グラス取り出し要求
         "glassNone":False,  #使用するグラスがグラスラックにない
         "iceNone":False,    #氷がない
         "plcConnectError":False,    #PLCとの接続エラー
@@ -341,7 +349,7 @@ def convertPlcState(errorcode,adr):
             "iceRequest": adr[22] == 1, #氷補充要求
             "providedLanesFull": [adr[i + 25] == 1 for i in range(len(providedLanesSensor))],    #提供レーンの満杯状況
             "plcConnectError":False,
-            "plcReceiveError":False
+            "plcReceiveError":0
         }
         internalPLCdata = {
             "machineReady": adr[0] == 1,    #機械動作可否
@@ -362,7 +370,7 @@ def convertPlcState(errorcode,adr):
         }
     else:
         externalPLCdata = {
-            "plcReceiveError":True
+            "plcReceiveError":errorcode
         }
         internalPLCdata= {
 
