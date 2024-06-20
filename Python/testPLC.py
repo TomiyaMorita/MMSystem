@@ -30,6 +30,9 @@ def test(data):
             if senddata[6] == 1:
                 testplcData[4]=1    #自動動作開始
                 testplcData[5]=1
+                testplcData[10]=1
+                testplcData[17]=0
+                testplcData[18]=0
                 print("自動動作開始")
             if senddata[7] == 1:
                 testplcData[4]=0

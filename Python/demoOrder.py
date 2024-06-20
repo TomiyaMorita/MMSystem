@@ -21,10 +21,10 @@ def stateCheck():
             print("自動動作停止中、駆動部停止中")
         if stdata["glassNone"]:
             print("グラス無し、再注文要請")
-        if stdata["glassManualRemoving"]:
-            print("グラス手動取り出し中")
-        if stdata["continueError"]:
-            print("自動動作継続不可エラー")
+        if stdata["drinkResetRequest"]:
+            print("ドリンクリセットリクエスト")
+        if stdata["glassRemoveRequest"]:
+            print("グラス取り出しリクエスト")
         if stdata["drinkReseted"]:
             print("ドリンクリセット完了")
 def nextOrder(ordermode):
