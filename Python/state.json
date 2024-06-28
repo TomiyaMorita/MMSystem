@@ -1,10 +1,10 @@
 {
-  "stateID": 821,
+  "stateID": 931,
   "machineEmergency": false,
   "runMode": "autoOperation",
   "orderReady": true,
   "drinkResetRequest": false,
-  "glassRemoveRequest": false,
+  "glassRemoveRequest": true,
   "glassNone": false,
   "iceNone": false,
   "plcConnectError": false,
@@ -14,8 +14,8 @@
   "autoMode": true,
   "operating": true,
   "errorNum": 0,
-  "orderCompleteNum": 0,
-  "drinkCompletionNum": 0,
+  "orderCompleteNum": 2620,
+  "drinkCompletionNum": 2620,
   "drinkReseted": false,
   "iceRequest": false,
   "providedLanesFull": [

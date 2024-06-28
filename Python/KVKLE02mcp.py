@@ -530,7 +530,6 @@ def toPLC(data):
             return plcdata
         case 2:
             setdrink=data[1:]
-            # print("setdrink",setdrink)
             firstdevice="D2000"
             senddata=struct.pack("250i",*setdrink) 
             rcv=mcp.write(firstdevice,senddata)

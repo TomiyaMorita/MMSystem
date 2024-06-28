@@ -1,43 +1,42 @@
 import random
-
+###define###
+#ダミーレーン分けを使用するか(Trueにすると指定に関係なく排出レーンが4杯ごとに変更する)
+dummyLane = True
+#氷減少センサーが反応してから氷がなくなるまで作製できるドリンクの数
+defineIceLimitCount = 1000
 class DrinkBotMotionHandler:
-    in_ustate = {}
-    in_bstate = {}
-    ex_bstate = {}
-    ex_ustate = {}
-    waitingUpdate={}
-    def __init__(self,in_ustate,ex_ustate):
-        DrinkBotMotionHandler.in_ustate=in_ustate
-        DrinkBotMotionHandler.ex_ustate = ex_ustate
-    def updateState(self, whitchstate,inState={},exState={}):
-        # updateflag=False
-        #更新前のステータスbeforedictに保存
-        self.in_bstate = self.in_ustate.copy()
-        #全てのステータスをalldictに統合
-        self.in_ustate.update(inState)
-        self.ex_bstate = self.ex_ustate.copy()
-        self.ex_ustate.update(exState)
+    in_bstate={}
+    in_ustate={}
+    ex_bstate={}
+    ex_ustate={}
+    def updateState(self, whitchstate,beforeInState={},beforeExState={},inState={},exState={}):
+        #更新前の内部ステータスをコピー
+        self.in_bstate = beforeInState.copy()
+        #更新する
+        self.in_ustate = {**beforeInState,**inState}
+        #更新前の外部出力ステータスをコピー
+        self.ex_bstate = beforeExState.copy()
+        #更新する
+        self.ex_ustate = {**beforeExState,**exState}
         match whitchstate:
             case "plc":
-                adr = self.plcUpdated(self)
-                self.ex_ustate.update(self.waitingUpdate)
-                self.waitingUpdate.clear()
-                updateflag = True if self.ex_ustate != self.ex_bstate else False
+                adr = self.plcUpdated()
+                self.ex_ustate.update(self.in_ustate["waitingUpdate"])
+                print(self.in_ustate["waitingUpdate"])
+                self.in_ustate["waitingUpdate"].clear()
             case "controle":
-                adr,udstate = self.controleUpdated(self)
-                self.waitingUpdate.update(udstate)
+                adr,udstate = self.controleUpdated()
+                self.in_ustate["waitingUpdate"].update(udstate)
                 # print("controle",self.ex_ustate["continueError"])
-                updateflag = True if self.ex_ustate != self.ex_bstate else False
             case "order":
-                adr,udstate = self.nextOrderUpdated(self)
-                self.waitingUpdate.update(udstate)
-                updateflag = True if self.ex_ustate != self.ex_bstate else False
+                adr,udstate = self.nextOrderUpdated()
+                self.in_ustate["waitingUpdate"].update(udstate)
             case _:
                 adr = [0] * 251
         # print("ex_ustate",self.ex_ustate)
-        # print("waitingUpdate",self.waitingUpdate)
+        # print("waitingUpdate",self.in_ustate["waitingUpdate"])
         # print("self.ex_ustate",self.ex_ustate)
-        return adr,self.ex_ustate,updateflag    
+        return adr,self.in_ustate, self.ex_ustate   
     def plcUpdated(self):
         wadr = [0]
         adr = [0] * 250
@@ -185,6 +184,7 @@ class DrinkBotMotionHandler:
                     adr[pumpnum] = 1
                     wadr[0] = 2
                     udstate.update(runMode = "manualPumpON")
+                    print("マニュアルポンプON")
                 else:
                     print("ポンプON時自動動作中のため動作不可")
             
@@ -206,7 +206,7 @@ class DrinkBotMotionHandler:
         wadr = [0]
         adr = [0] * 250
         udstate = {}
-        dummyLane = True
+        
         if  self.in_ustate.get("machineReady", False) and self.ex_ustate.get("errorNum", 0) == 0 and self.ex_ustate.get("autoMode", False):
             ###氷減少センサーに反応してから氷入りドリンクを何杯作れるかの設定###
             if self.in_ustate.get("useIce", False) and self.ex_ustate.get("iceRequest", False):   #氷を使用するドリンクで、氷補充がONの時
@@ -215,7 +215,7 @@ class DrinkBotMotionHandler:
                 count += 1
                 self.in_ustate.update(icelimitcount=count)
                 # DrinkBotMotionHandler.icelimitcount += 1
-                if count > 100000:
+                if count > defineIceLimitCount:
                     udstate.update(iceNone = True)
 
             ###使用するグラスが候補のグラスレーンに存在するかの判定###
@@ -260,7 +260,7 @@ class DrinkBotMotionHandler:
                     drinknum = firstArynum + 5 * (drinks[i]['pumpNum'] - 1)
                     adr[drinknum] = 1
                     adr[drinknum + 1] = drinks[i]['time']
-                    print("使用ドリンク",drinknum)
+                    print("使用ポンプ",2000+drinknum*2)
             elif udstate.get("glassNone", False):
                 print("グラス無し注文不可")
             elif udstate.get("iceNone", False):
