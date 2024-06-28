@@ -21,22 +21,25 @@ def test(data):
             # print("write")
             senddata=data[1:]
             if senddata[1] == 1:
-                testplcData[4]=0
+                testplcData[6]=0
                 print("エラーリセット")
             if senddata[3] == 1:
                 print("注文リクエスト")
             if senddata[4] == 1:
                 print("グラス手動取り出し")
             if senddata[6] == 1:
-                testplcData[2]=1    #自動動作開始
-                testplcData[3]=1
+                testplcData[4]=1    #自動動作開始
+                testplcData[5]=1
+                testplcData[10]=1
+                testplcData[17]=0
+                testplcData[18]=0
                 print("自動動作開始")
             if senddata[7] == 1:
-                testplcData[2]=0
-                testplcData[3]=0
+                testplcData[4]=0
                 print("自動動作停止")
             if senddata[7] == 2:
-                testplcData[3]=0
+                testplcData[4]=0
+                testplcData[5]=0
                 print("自動動作終了")
             if senddata[8] == 1:
                 pumpary=senddata[15:]
@@ -46,8 +49,8 @@ def test(data):
                 print("マニュアルポンプ：",poumnum)
             if senddata[2] == 1:    #注文リクエスト
                 print("排出レーン番号",senddata[5])
-                testplcData[7]=senddata[10]
-                testplcData[8]=senddata[10]
+                testplcData[15]=senddata[10]
+                testplcData[15]=senddata[10]
                 print("注文番号",senddata[10])
                 print("グラス",senddata[11])
                 print("氷",senddata[12])

@@ -1,0 +1,36 @@
+﻿<?xml version="1.0"?>
+<doc>
+<assembly>
+<name>
+DrinkServer
+</name>
+</assembly>
+<members>
+<member name="M:DrinkServer.ctrlFormItem.FindControlByFieldName(System.Windows.Forms.Form,System.String)">
+ <summary>
+ フォームに配置されているコントロールを名前で探す
+ （フォームクラスのフィールドをフィールド名で探す）
+ </summary>
+ <param name="frm">コントロールを探すフォーム</param>
+ <param name="name">コントロール（フィールド）の名前</param>
+ <returns>見つかった時は、コントロールのオブジェクト。
+ 見つからなかった時は、null(VB.NETではNothing)。</returns>
+</member>
+<member name="T:DrinkServer.My.Resources.Resources">
+<summary>
+  ローカライズされた文字列などを検索するための、厳密に型指定されたリソース クラスです。
+</summary>
+</member>
+<member name="P:DrinkServer.My.Resources.Resources.ResourceManager">
+<summary>
+  このクラスで使用されているキャッシュされた ResourceManager インスタンスを返します。
+</summary>
+</member>
+<member name="P:DrinkServer.My.Resources.Resources.Culture">
+<summary>
+  厳密に型指定されたこのリソース クラスを使用して、すべての検索リソースに対し、
+  現在のスレッドの CurrentUICulture プロパティをオーバーライドします。
+</summary>
+</member>
+</members>
+</doc>

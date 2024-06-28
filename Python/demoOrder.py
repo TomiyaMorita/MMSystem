@@ -21,10 +21,10 @@ def stateCheck():
             print("自動動作停止中、駆動部停止中")
         if stdata["glassNone"]:
             print("グラス無し、再注文要請")
-        if stdata["glassManualRemoving"]:
-            print("グラス手動取り出し中")
-        if stdata["drinkRemovedError"]:
-            print("自動動作再開時ドリンク取り出しエラー")
+        if stdata["drinkResetRequest"]:
+            print("ドリンクリセットリクエスト")
+        if stdata["glassRemoveRequest"]:
+            print("グラス取り出しリクエスト")
         if stdata["drinkReseted"]:
             print("ドリンクリセット完了")
 def nextOrder(ordermode):
@@ -35,19 +35,19 @@ def nextOrder(ordermode):
     num=ojdata["orderNum"]
     num = 0 if num >100000 else num+1
     lanenum=ojdata["completionLaneNum"]
-    lanenum = 0 if lanenum >1 else lanenum+1
+    lanenum = 1 if lanenum >2 else lanenum+1
     ojdata.update(nextOrderID=id,orderNum=num,completionLaneNum=lanenum)
     send=True
     match ordermode:
-        case "1":   #ハイボール1
-              mate=[{"pumpNum":6,"time":5000},{"pumpNum":41,"time":8000}]
-              ojdata.update(glassLaneNum=[10,11],useIce=True,drinks=mate)
+        case "1":   #ハイボール
+              mate=[{"pumpNum":6,"time":5000},{"pumpNum":41,"time":10000}]
+              ojdata.update(glassLaneNum=[10,11,12],useIce=True,drinks=mate)
         case "2":   #レモンサワー
-              mate=[{"pumpNum":30,"time":10000},{"pumpNum":41,"time":8000}]
-              ojdata.update(glassLaneNum=[10,11],useIce=True,drinks=mate)
+              mate=[{"pumpNum":30,"time":10000},{"pumpNum":41,"time":5000}]
+              ojdata.update(glassLaneNum=[10,11,12],useIce=True,drinks=mate)
         case "3":   #ビール
               mate=[{"pumpNum":43,"time":10000}]
-              ojdata.update(glassLaneNum=[4,5],useIce=False,drinks=mate)
+              ojdata.update(glassLaneNum=[1,2,3],useIce=False,drinks=mate)
         # case "4":
         #       mate=[{"pumpNum":1,"time":15000}]
         #       ojdata.update(glassLaneNum=[7,8,9],useIce=False,drinks=mate)
@@ -57,8 +57,7 @@ def nextOrder(ordermode):
         with open('nextOrder.json', 'w') as f:
             json.dump(ojdata, f, indent=2, ensure_ascii=False)
     return send
-    
-     
+
 def controle(ctrmode):
     with open("controle.json", 'r') as c:
         cjdata = json.load(c)
@@ -74,12 +73,14 @@ def controle(ctrmode):
         case "3":
             cjdata.update(controleMode="autoModeStop")
         case "4":
-            cjdata.update(controleMode="drinkRemoved")    
+            cjdata.update(controleMode="drinkResetCompleted")
         case "5":
-            cjdata.update(controleMode="manualPumpON",manualPumpNum=8)
+            cjdata.update(controleMode="glassRemoveCompleted") 
         case "6":
-            cjdata.update(controleMode="manualPumpOFF")
+            cjdata.update(controleMode="manualPumpON",manualPumpNum=8)
         case "7":
+            cjdata.update(controleMode="manualPumpOFF")
+        case "8":
             cjdata.update(controleMode="errorReset")
         case _:
             send=False
@@ -87,23 +88,85 @@ def controle(ctrmode):
         with open('controle.json', 'w') as f:
             json.dump(cjdata, f, indent=2, ensure_ascii=False)
     return send
-
+def changePLCData(plcmode):
+    send = True
+    plcstate=[0]*45
+    plcstate[0]=1
+    for i in range (30,44):
+        plcstate[i]=1
+    with open("plcState.json", 'r') as c:
+        pjdata = json.load(c)
+    match plcmode:
+        case "1":
+            plcstate[4]=1
+            plcstate[5]=1
+            plcstate[10]=1
+            pjdata.update(plcdata=plcstate)
+        case "2":
+            plcstate[4]=1
+            plcstate[5]=1
+            pjdata.update(plcdata=plcstate)
+        case "3":
+            pjdata.update(plcdata=plcstate)
+        case "4":
+            plcstate[5]=1
+            pjdata.update(plcdata=plcstate)    
+        case "5":
+            plcstate[4]=1
+            plcstate[5]=1
+            plcstate[10]=1
+            pjdata.update(plcdata=plcstate)
+        case "6":
+            plcstate[17]=1
+            pjdata.update(plcdata=plcstate)
+        case "7":
+            plcstate[18]=1
+            pjdata.update(plcdata=plcstate)
+        case "8":
+            plcstate[7]=1
+            pjdata.update(plcdata=plcstate)    
+        case "9":
+            plcstate[4]=1
+            plcstate[5]=1
+            plcstate[10]=1
+            for i in range (30,44):
+                plcstate[i]=0
+            pjdata.update(plcdata=plcstate)
+        case "10":
+            plcstate[4]=1
+            plcstate[5]=1
+            plcstate[10]=1
+            plcstate[22]=1
+            pjdata.update(plcdata=plcstate)
+        case "11":
+            plcstate[0]=0
+            pjdata.update(plcdata=plcstate)
+        case _:
+            send=False 
+    if send == True:
+        with open('plcState.json', 'w') as f:
+            json.dump(pjdata, f, ensure_ascii=False)
+    return send
 if __name__ == "__main__":
     loop=True
     while(loop):
         dict={}
         input("Enterキーを押してステータスを取得してください")
         stateCheck()
-        m=input("モードを選択してください\n 1:オーダーモード 2:コントロールモード 3:終了\n")
+        m=input("モードを選択してください\n 1:オーダーモード 2:コントロールモード 3:PLCステータスチェンジ 4:終了\n")
         match m:
             case "1":
                 p=input("コマンドを選択してください\n1:ハイボール\n2:レモンサワー\n3:ビール\n")               
                 loop=nextOrder(p)
 
             case "2":               
-                p=input("コマンドを選択してください\n1:非常停止\n2:自動動作開始\n3:自動動作停止\n4:エラー時ドリンク取り除き完了\n5:指定ポンプON\n6:指定ポンプOFF\n7:エラーリセット\n")
+                p=input("コマンドを選択してください\n1:非常停止\n2:自動動作開始\n3:自動動作停止\n4:ドリンクリセット完了\n5:グラス取り除き完了\n6:指定ポンプON\n7:指定ポンプOFF\n8:エラーリセット\n")
                 loop=controle(p)
             case "3":
+                p=input("コマンドを選択してください\n1:注文受付可\n2:注文受付不可\n3:自動動作終了\n4:ドリンク製作中\n5:ドリンク製作終了\n6:ドリンクリセット完了 \
+                        \n7:グラス手動取り出し完了\n8:動作継続不可エラー\n9:グラスレーングラス無し\n10:氷無し\n11:排出レーン満杯\n12:非常停止ボタン押下\n")
+                loop=changePLCData(p)
+            case "4":
                 print("終了")
                 loop = False
             case _:
