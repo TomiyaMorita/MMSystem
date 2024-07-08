@@ -9,6 +9,7 @@ import KVKLE02mcp
 import queue
 import motionHandler
 from collections import deque
+import sys
 
 operatingMode = 0   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
 # ミューテックスの作成
@@ -139,14 +140,18 @@ def updateJson():
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
+        sys.exit()
     observer.join()
     print("end")
 
 def checkPLC():
-    while True:
-        time.sleep(1)   # 定期的な間隔で実行（例：5秒ごと）
-        with lock:
-            info_queue.put([1])
+    try:
+        while True:
+            time.sleep(1)   # 定期的な間隔で実行（例：5秒ごと）
+            with lock:
+                info_queue.put([1])
+    except KeyboardInterrupt:
+        sys.exit()
 
 
 def updateSender(plcdata,jsondata,plcUpdateflag,jsonUpdateflag):
@@ -183,45 +188,48 @@ def allStateDebug(bistate,bestate,uistate,uestate):
 beforeInState={}
 beforeExState={}
 def info_sender():
-    while True:
-        # キューから情報を取得して送信
-        info = info_queue.get()
-        s=motionHandler.DrinkBotMotionHandler()
-        if info:
-            # ここで情報を送信する
-            if info[0] == 1:    #PLCから定期ステータス取得・json更新
-                if operatingMode == 0:
-                    rdata = KVKLE02mcp.toPLC(info)  #PLCからステータス取得
-                elif operatingMode == 1:
-                    rdata = testPLC.test(info)  #PLCからステータス取得
-                edata, idata = convertPlcState(rdata[0],rdata[1:])   #PLCから取得したデータをシステム内で使用する辞書型にコンバート
-                senddata, updateInState, updateExState = s.updateState("plc",beforeInState,beforeExState,idata,edata)   #ステータスの更新により動作を行うアドレスを取得 
-                judflag = True if updateExState != beforeExState else False
+    try:
+        while True:
+            # キューから情報を取得して送信
+            info = info_queue.get()
+            s=motionHandler.DrinkBotMotionHandler()
+            if info:
+                # ここで情報を送信する
+                if info[0] == 1:    #PLCから定期ステータス取得・json更新
+                    if operatingMode == 0:
+                        rdata = KVKLE02mcp.toPLC(info)  #PLCからステータス取得
+                    elif operatingMode == 1:
+                        rdata = testPLC.test(info)  #PLCからステータス取得
+                    edata, idata = convertPlcState(rdata[0],rdata[1:])   #PLCから取得したデータをシステム内で使用する辞書型にコンバート
+                    senddata, updateInState, updateExState = s.updateState("plc",beforeInState,beforeExState,idata,edata)   #ステータスの更新により動作を行うアドレスを取得 
+                    judflag = True if updateExState != beforeExState else False
+                    pudflag = True if senddata[0] == 2 else False
+                    ###Log出し###
+                    allStateDebug(beforeInState,beforeExState,updateInState,updateExState)
+                    if judflag:
+                        for key in beforeExState:
+                            if key in updateExState and beforeExState[key] != updateExState[key]:
+                                print("differentis",key)
+                        print("stateChange!!")
+                        print("runMode",updateExState["runMode"])
+                elif info[0] == 2:
+                    senddata, updateInState, updateExState = s.updateState("controle",beforeInState,beforeExState,info[1])
+                    judflag = False
+                elif info[0] == 3:
+                    senddata, updateInState, updateExState = s.updateState("order",beforeInState,beforeExState,info[1])
+                    judflag = False
+                else:
+                    judflag = False
+                    senddata=[0]
+                    updateInState = beforeInState
+                    updateExState = beforeExState
                 pudflag = True if senddata[0] == 2 else False
-                ###Log出し###
-                allStateDebug(beforeInState,beforeExState,updateInState,updateExState)
-                if judflag:
-                    for key in beforeExState:
-                        if key in updateExState and beforeExState[key] != updateExState[key]:
-                            print("differentis",key)
-                    print("stateChange!!")
-                    print("runMode",updateExState["runMode"])
-            elif info[0] == 2:
-                senddata, updateInState, updateExState = s.updateState("controle",beforeInState,beforeExState,info[1])
-                judflag = False
-            elif info[0] == 3:
-                senddata, updateInState, updateExState = s.updateState("order",beforeInState,beforeExState,info[1])
-                judflag = False
-            else:
-                judflag = False
-                senddata=[0]
-                updateInState = beforeInState
-                updateExState = beforeExState
-            pudflag = True if senddata[0] == 2 else False
-            updateSender(senddata ,updateExState ,pudflag ,judflag)
-            beforeInState.update(updateInState)
-            beforeExState.update(updateExState)
-        info_queue.task_done()
+                updateSender(senddata ,updateExState ,pudflag ,judflag)
+                beforeInState.update(updateInState)
+                beforeExState.update(updateExState)
+            info_queue.task_done()
+    except KeyboardInterrupt:
+        sys.exit()
 
 if __name__ == "__main__":
     data0=[0]*50
@@ -243,8 +251,8 @@ if __name__ == "__main__":
     
     # DrinkBotMotionHandler.ex_bstate = stateData
 
-    t1 = threading.Thread(target=updateJson)
-    t2 = threading.Thread(target=checkPLC)
+    t1 = threading.Thread(target=updateJson, daemon=True)
+    t2 = threading.Thread(target=checkPLC, daemon=True)
     t3 = threading.Thread(target=info_sender, daemon=True)
 
     t1.start()
@@ -252,5 +260,7 @@ if __name__ == "__main__":
     t3.start()
 
     t1.join()
+
+
     t2.join()
     t3.join()

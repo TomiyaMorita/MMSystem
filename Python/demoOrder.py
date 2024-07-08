@@ -82,6 +82,8 @@ def controle(ctrmode):
             cjdata.update(controleMode="manualPumpOFF")
         case "8":
             cjdata.update(controleMode="errorReset")
+        case "9":
+            cjdata.update(controleMode="programReset")
         case _:
             send=False
     if send == True:
@@ -160,7 +162,7 @@ if __name__ == "__main__":
                 loop=nextOrder(p)
 
             case "2":               
-                p=input("コマンドを選択してください\n1:非常停止\n2:自動動作開始\n3:自動動作停止\n4:ドリンクリセット完了\n5:グラス取り除き完了\n6:指定ポンプON\n7:指定ポンプOFF\n8:エラーリセット\n")
+                p=input("コマンドを選択してください\n1:非常停止\n2:自動動作開始\n3:自動動作停止\n4:ドリンクリセット完了\n5:グラス取り除き完了\n6:指定ポンプON\n7:指定ポンプOFF\n8:エラーリセット\n9:プログラムリセット\n")
                 loop=controle(p)
             case "3":
                 p=input("コマンドを選択してください\n1:注文受付可\n2:注文受付不可\n3:自動動作終了\n4:ドリンク製作中\n5:ドリンク製作終了\n6:ドリンクリセット完了 \
