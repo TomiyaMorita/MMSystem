@@ -22,7 +22,7 @@ class DrinkBotMotionHandler:
             case "plc":
                 adr = self.plcUpdated()
                 self.ex_ustate.update(self.in_ustate["waitingUpdate"])
-                print(self.in_ustate["waitingUpdate"])
+                # print(self.in_ustate["waitingUpdate"])
                 self.in_ustate["waitingUpdate"].clear()
             case "controle":
                 adr,udstate = self.controleUpdated()

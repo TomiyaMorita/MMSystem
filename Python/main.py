@@ -10,8 +10,10 @@ import queue
 import motionHandler
 from collections import deque
 import sys
-
-operatingMode = 0   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
+import signal
+#スレッド停止イベント管理
+stop_event = threading.Event()
+operatingMode = 1   #0:PLC使用　1:テスト用ダミーPLCプログラム使用
 # ミューテックスの作成
 lock = threading.Lock()
 # キューの作成（情報を送信するため）
@@ -124,7 +126,7 @@ class MyFileWatchHandler(PatternMatchingEventHandler):
                     mode[0]=3
                     return data, mode
         return None, None
-def updateJson():
+def updateJson(name,stop_event):
     #jsonファイルの更新を監視する関数
     # 対象ディレクトリ
     DIR_WATCH = '.'
@@ -134,24 +136,29 @@ def updateJson():
     observer = Observer()
     observer.schedule(event_handler, DIR_WATCH, recursive=True)
     observer.start()
-    print("start")
     try:
-        while True:
+        while not stop_event.is_set():
             time.sleep(1)
-    except KeyboardInterrupt:
+    except Exception as e:
+        # stop_event.set()
+        # observer.stop()
+        print(f"Thread {name} stopped with error: {e}")
+        # sys.exit()
+    finally:
+        stop_event.set()
         observer.stop()
-        sys.exit()
-    observer.join()
-    print("end")
+        observer.join()
+    # observer.join()
 
-def checkPLC():
+def checkPLC(name,stop_event):
     try:
-        while True:
+        while not stop_event.is_set():
             time.sleep(1)   # 定期的な間隔で実行（例：5秒ごと）
             with lock:
                 info_queue.put([1])
-    except KeyboardInterrupt:
-        sys.exit()
+    except Exception as e:
+        print(f"Thread {name} stopped with error: {e}")
+        stop_event.set()
 
 
 def updateSender(plcdata,jsondata,plcUpdateflag,jsonUpdateflag):
@@ -187,9 +194,9 @@ def allStateDebug(bistate,bestate,uistate,uestate):
 
 beforeInState={}
 beforeExState={}
-def info_sender():
+def info_sender(name,stop_event):
     try:
-        while True:
+        while not stop_event.is_set():
             # キューから情報を取得して送信
             info = info_queue.get()
             s=motionHandler.DrinkBotMotionHandler()
@@ -228,13 +235,13 @@ def info_sender():
                 beforeInState.update(updateInState)
                 beforeExState.update(updateExState)
             info_queue.task_done()
-    except KeyboardInterrupt:
-        sys.exit()
+    except Exception as e:
+        print(f"Thread {name} stopped with error: {e}")
+        stop_event.set()
 
 if __name__ == "__main__":
     data0=[0]*50
     edata, idata = convertPlcState(data0[0],data0[1:])
-        
     #起動時のjsonファイル読み込み
     with open("controle.json", 'r') as f:
         data1 = json.load(f)
@@ -244,23 +251,25 @@ if __name__ == "__main__":
     resExdata = resetExState()
     internalData = {**idata, **data1, **data2,**resIndata}
     externalData={**resExdata, **edata}
-    print("firstinternalData",internalData)
-    print("firstexternalData",externalData)
     beforeInState.update(internalData)
     beforeExState.update(externalData)
     
     # DrinkBotMotionHandler.ex_bstate = stateData
+    try:
+        t1 = threading.Thread(target=updateJson,args=("Thread-1",stop_event),daemon=True)
+        t2 = threading.Thread(target=checkPLC,args=("Thread-2",stop_event),daemon=True)
+        t3 = threading.Thread(target=info_sender, args=("Thread-3",stop_event),daemon=True)
+        t1.start()
+        t2.start()
+        t3.start()
+        while t1.is_alive() and t2.is_alive() and t3.is_alive():
+            # print("main", flush=True)
+            # flush=True
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("except KeyboardInterrupt")
+        sys.exit()
 
-    t1 = threading.Thread(target=updateJson, daemon=True)
-    t2 = threading.Thread(target=checkPLC, daemon=True)
-    t3 = threading.Thread(target=info_sender, daemon=True)
-
-    t1.start()
-    t2.start()
-    t3.start()
-
-    t1.join()
-
-
-    t2.join()
-    t3.join()
+    # t1.join()
+    # t2.join()
+    # t3.join()
